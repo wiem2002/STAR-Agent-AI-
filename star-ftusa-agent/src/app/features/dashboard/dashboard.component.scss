@@ -1,0 +1,29 @@
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+  padding: 20px 24px 40px;
+  align-items: start;
+}
+
+.dashboard-grid--single {
+  grid-template-columns: 1fr;
+}
+
+::ng-deep .panel.col-third { grid-column: span 4; }
+::ng-deep .panel.col-half { grid-column: span 6; }
+::ng-deep .panel.col-wide { grid-column: span 8; }
+
+@media (max-width: 1200px) {
+  ::ng-deep .panel.col-third { grid-column: span 6; }
+  ::ng-deep .panel.col-wide { grid-column: span 12; }
+}
+
+@media (max-width: 760px) {
+  .dashboard-grid { padding: 14px 14px 32px; gap: 14px; }
+  ::ng-deep .panel.col-third,
+  ::ng-deep .panel.col-half,
+  ::ng-deep .panel.col-wide {
+    grid-column: span 12;
+  }
+}

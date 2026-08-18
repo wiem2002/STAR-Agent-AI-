@@ -1,0 +1,77 @@
+<app-panel-card [numero]="1" titre="Tableau de bord" spanClass="col-third" *ngIf="kpi">
+  <div class="kpi-grid">
+    <div class="kpi">
+      <small>Dossiers totaux</small>
+      <strong>{{ kpi.dossiersTotaux | number }}</strong>
+      <span class="badge badge--up">{{ kpi.dossiersTotauxVariation }}</span>
+    </div>
+    <div class="kpi">
+      <small>En attente d'analyse</small>
+      <strong>{{ kpi.enAttenteAnalyse }}</strong>
+      <span class="badge badge--up">{{ kpi.enAttenteVariation }}</span>
+    </div>
+    <div class="kpi">
+      <small>IA en cours d'analyse</small>
+      <strong>{{ kpi.iaEnCours }}</strong>
+      <span class="badge badge--down">{{ kpi.iaEnCoursVariation }}</span>
+    </div>
+    <div class="kpi kpi--alert">
+      <small>À valider (faible confiance)</small>
+      <strong>{{ kpi.aValiderFaibleConfiance }}</strong>
+      <span class="badge badge--warn">{{ kpi.aValiderVariation }}</span>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="split__block">
+      <h4>Répartition par résultat IA</h4>
+      <div class="donut-row">
+        <div class="donut" [style.background]="donutGradient">
+          <div class="donut__hole"></div>
+        </div>
+        <ul class="legend">
+          <li *ngFor="let r of repartition">
+            <span class="legend__dot" [style.background]="r.couleur"></span>
+            {{ r.label }} ({{ r.valeurPct }}%)
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="split__block">
+      <h4>Top cas FTUSA</h4>
+      <div class="bars">
+        <div class="bar-row" *ngFor="let c of topCas">
+          <span class="bar-row__label">{{ c.cas }}</span>
+          <div class="bar-row__track">
+            <div class="bar-row__fill" [style.width.%]="(c.nombre / maxTopCas) * 100"></div>
+          </div>
+          <span class="bar-row__value">{{ c.nombre }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-stats">
+    <div class="footer-stat">
+      <small>Temps moyen de traitement</small>
+      <strong>{{ kpi.tempsMoyenTraitement }}</strong>
+      <span class="badge badge--up">{{ kpi.tempsMoyenVariation }}</span>
+    </div>
+    <div class="footer-stat">
+      <small>Taux de précision IA (ce mois)</small>
+      <strong>{{ kpi.tauxPrecisionIA }}%</strong>
+      <span class="badge badge--up">{{ kpi.tauxPrecisionVariation }}</span>
+    </div>
+    <div class="footer-stat">
+      <small>Dossiers traités ce mois</small>
+      <strong>{{ kpi.dossiersTraitesCeMois }}</strong>
+      <span class="badge badge--up">{{ kpi.dossiersTraitesVariation }}</span>
+    </div>
+    <div class="footer-stat">
+      <small>Dossiers clôturés ce mois</small>
+      <strong>{{ kpi.dossiersClosCeMois }}</strong>
+      <span class="badge badge--up">{{ kpi.dossiersClosVariation }}</span>
+    </div>
+  </div>
+</app-panel-card>

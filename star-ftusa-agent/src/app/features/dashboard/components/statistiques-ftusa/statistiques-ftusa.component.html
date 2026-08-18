@@ -1,0 +1,42 @@
+<app-panel-card [numero]="9" titre="Statistiques FTUSA" spanClass="col-wide">
+  <div class="stats-grid">
+    <div class="stats-block">
+      <h4>Répartition des cas FTUSA (ce mois)</h4>
+      <div class="donut-row">
+        <div class="donut" [style.background]="donutGradient">
+          <div class="donut__hole">
+            <strong>{{ totalDossiers }}</strong>
+            <small>dossiers</small>
+          </div>
+        </div>
+        <ul class="legend">
+          <li *ngFor="let r of repartitionCas">
+            <span class="legend__dot" [style.background]="r.couleur"></span>
+            {{ r.cas }} ({{ r.pourcentage }}%)
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="stats-block">
+      <h4>Évolution du taux de précision IA</h4>
+      <svg viewBox="0 0 260 90" class="line-chart" preserveAspectRatio="none">
+        <polyline [attr.points]="lignePoints" fill="none" stroke="var(--star-green-600)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div class="line-chart__labels">
+        <span *ngFor="let p of evolution">{{ p.mois }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-footer">
+    <div class="stats-footer__item">
+      <small>Taux d'acceptation des propositions IA</small>
+      <strong>{{ tauxAcceptation }}%</strong>
+    </div>
+    <div class="stats-footer__item">
+      <small>Temps moyen de traitement</small>
+      <strong>{{ tempsMoyen }}</strong>
+    </div>
+  </div>
+</app-panel-card>

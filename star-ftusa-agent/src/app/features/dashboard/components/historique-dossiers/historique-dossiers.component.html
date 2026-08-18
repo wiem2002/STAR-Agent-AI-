@@ -1,0 +1,29 @@
+<app-panel-card [numero]="8" titre="Historique des dossiers" spanClass="col-half">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>N° Sinistre</th>
+          <th>Date accident</th>
+          <th>Cas IA</th>
+          <th>Confiance</th>
+          <th>Décision</th>
+          <th>Responsabilité A/B</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of dossiers">
+          <td class="mono">{{ d.numeroSinistre }}</td>
+          <td>{{ d.dateAccident }}</td>
+          <td>{{ d.casIA }}</td>
+          <td>{{ d.confiance }}%</td>
+          <td><span class="statut" [ngClass]="classeStatut(d.decision)">{{ d.decision }}</span></td>
+          <td>{{ d.responsabiliteA }}% / {{ d.responsabiliteB }}%</td>
+          <td>{{ d.statut }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <a class="table-link" href="javascript:void(0)">Voir tous les dossiers</a>
+</app-panel-card>

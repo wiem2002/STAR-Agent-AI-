@@ -1,0 +1,164 @@
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.stepper__item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 90px;
+  position: relative;
+}
+.stepper__badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--star-slate-100);
+  color: var(--ink-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.stepper__badge--done { background: var(--star-green-500); color: #fff; }
+.stepper__badge--active {
+  background: #fff;
+  border: 2px solid var(--star-green-600);
+  color: var(--star-green-700);
+}
+.stepper__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-700);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.stepper__line {
+  flex: 1;
+  height: 2px;
+  background: var(--star-green-200, var(--star-green-100));
+  margin: 0 6px;
+}
+
+.previews {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+.preview-block h4 {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-700);
+  margin-bottom: 8px;
+}
+.preview-frame {
+  height: 120px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-500);
+  position: relative;
+  overflow: hidden;
+}
+.preview-frame--doc { background: repeating-linear-gradient(180deg, #fff, #fff 8px, var(--star-green-50) 8px, var(--star-green-50) 9px); }
+.preview-frame--sketch { background: var(--star-green-50); }
+
+.sketch-road { position: absolute; background: #c9d6cf; }
+.sketch-road--h { width: 100%; height: 20px; top: 50%; transform: translateY(-50%); }
+.sketch-road--v { height: 100%; width: 20px; left: 50%; transform: translateX(-50%); }
+.sketch-car {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sketch-car--a { background: var(--star-green-600); top: 58%; left: 22%; }
+.sketch-car--b { background: var(--star-red); top: 22%; left: 55%; }
+.sketch-stop {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--star-red);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.photo-thumb {
+  height: 46px;
+  background: var(--star-slate-100);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.preview-link {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--star-green-700);
+  text-decoration: none;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.progress-row__track {
+  flex: 1;
+  height: 8px;
+  background: var(--star-slate-100);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-row__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--star-green-500), var(--star-green-700));
+}
+.progress-row__value { font-size: 12px; font-weight: 800; color: var(--star-green-800); }
+
+@media (max-width: 900px) {
+  .previews { grid-template-columns: 1fr; }
+}
+
+app-resultat-analyse {
+  display: block;
+  margin-top: 16px;
+}
+
+.erreur {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--star-red, #dc2626);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}

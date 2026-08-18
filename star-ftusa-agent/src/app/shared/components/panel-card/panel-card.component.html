@@ -1,0 +1,9 @@
+<section class="panel" [ngClass]="spanClass">
+  <header class="panel__header">
+    <span class="panel__numero">{{ numero }}</span>
+    <h3 class="panel__titre">{{ titre }}</h3>
+  </header>
+  <div class="panel__body">
+    <ng-content></ng-content>
+  </div>
+</section>

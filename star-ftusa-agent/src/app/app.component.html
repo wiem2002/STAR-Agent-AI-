@@ -1,0 +1,14 @@
+<div class="shell">
+  <app-sidebar
+    [ouverte]="sidebarOuverte"
+    (fermer)="fermerSidebar()"
+    (sectionChange)="changerSection($event)"
+  ></app-sidebar>
+
+  <div class="shell__main">
+    <app-topbar (toggleMenu)="basculerSidebar()"></app-topbar>
+    <main class="shell__content">
+      <app-dashboard></app-dashboard>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,92 @@
+.resultat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 18px;
+}
+
+.cas-box {
+  background: linear-gradient(135deg, var(--star-green-50), #fff);
+  border: 1px solid var(--star-green-100);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.cas-box__eyebrow { font-size: 10.5px; font-weight: 700; color: var(--ink-500); text-transform: uppercase; }
+.cas-box__titre { font-size: 24px; font-family: var(--font-display); color: var(--star-green-800); }
+.cas-box__regle { font-size: 12px; color: var(--ink-700); font-weight: 600; }
+
+.responsabilites {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.responsabilite {
+  background: var(--star-slate-100);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  text-align: center;
+}
+.responsabilite small { display: block; font-size: 10.5px; color: var(--ink-500); font-weight: 700; margin-bottom: 4px; }
+.responsabilite strong { font-size: 22px; color: var(--star-green-800); font-family: var(--font-display); }
+
+.confiance__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-700);
+  margin-bottom: 6px;
+}
+.confiance__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--star-slate-100);
+  overflow: hidden;
+}
+.confiance__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--star-green-500), var(--star-green-700));
+}
+
+h4 {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-700);
+  margin-bottom: 8px;
+  margin-top: 14px;
+}
+h4:first-child { margin-top: 0; }
+
+.justification {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-700);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dommages {
+  display: flex;
+  gap: 12px;
+}
+.dommage {
+  flex: 1;
+  background: var(--star-slate-100);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-align: center;
+}
+.dommage__thumb { font-size: 26px; display: block; margin-bottom: 6px; }
+.dommage small { font-size: 11px; font-weight: 700; color: var(--ink-500); }
+
+@media (max-width: 900px) {
+  .resultat-grid { grid-template-columns: 1fr; }
+}

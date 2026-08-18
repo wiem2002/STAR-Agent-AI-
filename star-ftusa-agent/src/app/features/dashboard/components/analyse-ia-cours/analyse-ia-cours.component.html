@@ -1,0 +1,55 @@
+<app-panel-card [numero]="3" titre="Analyse IA en cours" spanClass="col-third">
+  <p class="erreur" *ngIf="erreur">{{ erreur }}</p>
+
+  <div class="stepper" *ngIf="!erreur">
+    <div class="stepper__item" *ngFor="let e of etapes; let last = last">
+      <div class="stepper__badge" [class.stepper__badge--done]="e.statut === 'termine'" [class.stepper__badge--active]="e.statut === 'en-cours'">
+        <span *ngIf="e.statut === 'termine'">✓</span>
+        <span *ngIf="e.statut !== 'termine'">{{ e.ordre }}</span>
+      </div>
+      <span class="stepper__label">{{ e.libelle }}</span>
+      <div class="stepper__line" *ngIf="!last"></div>
+    </div>
+  </div>
+
+  <div class="previews" *ngIf="!erreur">
+    <div class="preview-block">
+      <h4>Aperçu du constat</h4>
+      <div class="preview-frame preview-frame--doc">
+        <ng-container *ngIf="previewUrl; else noPreview">
+          <iframe [src]="previewUrl" width="100%" height="200px"></iframe>
+        </ng-container>
+        <ng-template #noPreview>
+          <div class="preview-frame--empty">📝 Constat scanné</div>
+        </ng-template>
+      </div>
+    </div>
+    <div class="preview-block">
+      <h4>Croquis détecté</h4>
+      <div class="preview-frame preview-frame--sketch">
+        <div class="sketch-road sketch-road--h"></div>
+        <div class="sketch-road sketch-road--v"></div>
+        <span *ngIf="sketchShowA" class="sketch-car sketch-car--a">A</span>
+        <span *ngIf="sketchShowB" class="sketch-car sketch-car--b">B</span>
+        <span *ngIf="sketchShowStop" class="sketch-stop">STOP</span>
+      </div>
+    </div>
+    <div class="preview-block">
+      <h4>Photos détectées ({{ photos.length }})</h4>
+      <div class="photo-grid">
+        <div class="photo-thumb" *ngFor="let p of photos">🚗</div>
+      </div>
+      <a class="preview-link" href="javascript:void(0)">Voir toutes les photos</a>
+    </div>
+  </div>
+
+  <div class="progress-row" *ngIf="!erreur">
+    <div class="progress-row__track">
+      <div class="progress-row__fill" [style.width.%]="progression"></div>
+    </div>
+    <span class="progress-row__value">{{ progression }}%</span>
+    <button type="button" class="btn btn--outline" (click)="annulerAnalyse()">Annuler l'analyse</button>
+  </div>
+</app-panel-card>
+
+<app-resultat-analyse *ngIf="analyseTerminee"></app-resultat-analyse>

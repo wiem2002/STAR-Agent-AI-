@@ -1,0 +1,13 @@
+<div class="dashboard-grid dashboard-grid--single">
+  <ng-container *ngIf="sectionActive$ | async as sectionActive" [ngSwitch]="sectionActive">
+    <app-tableau-de-bord *ngSwitchCase="'tableau-de-bord'"></app-tableau-de-bord>
+    <app-nouveau-dossier *ngSwitchCase="'nouveau-dossier'"></app-nouveau-dossier>
+    <app-analyse-ia-cours *ngSwitchCase="'analyse-ia'"></app-analyse-ia-cours>
+    <app-resultat-analyse *ngSwitchCase="'cas-ftusa'"></app-resultat-analyse>
+    <app-details-techniques *ngSwitchCase="'referentiel-ftusa'"></app-details-techniques>
+    <app-validation-gestionnaire *ngSwitchCase="'regles-parametres'"></app-validation-gestionnaire>
+    <app-statistiques-ftusa *ngSwitchCase="'statistiques'"></app-statistiques-ftusa>
+    <app-historique-dossiers *ngSwitchCase="'historique'"></app-historique-dossiers>
+    <app-interface-mobile *ngSwitchCase="'administration'"></app-interface-mobile>
+  </ng-container>
+</div>

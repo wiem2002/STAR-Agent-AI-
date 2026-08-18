@@ -1,0 +1,547 @@
+{
+  "meta": {
+    "source": "Ftusa - BAREME DE RESPONSABILITE - Réparation des dégâts matériels",
+    "date_document": "23/08/2024",
+    "note": "Encodage structuré unique du PDF. Ne doit PAS être relu par un LLM à chaque sinistre : c'est la source de vérité figée utilisée par le moteur de règles déterministe.",
+    "criteres_exclus": [
+      "vitesse",
+      "mouvement_pietons",
+      "conditions_atmospheriques",
+      "visibilite",
+      "etat_chaussee",
+      "signalisation_lumineuse_sonore_manuelle"
+    ],
+    "criteres_pris_en_compte": [
+      "direction_des_vehicules",
+      "position_des_vehicules_sur_la_chaussee",
+      "stationnement_de_l_un_des_vehicules"
+    ]
+  },
+  "cas": [
+    {
+      "id": "01",
+      "famille": "meme_sens_meme_chaussee",
+      "sous_famille": "meme_file",
+      "titre": "Y heurte X sur sa partie arrière (X et Y suivent le même sens)",
+      "conditions": {
+        "sens": "meme_sens",
+        "file": "meme_file",
+        "vehicule_Y_action": [
+          "heurte_arriere"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "02",
+      "famille": "meme_sens_meme_chaussee",
+      "sous_famille": "files_differentes",
+      "titre": "X et Y circulent sur deux files différentes, sans changement ou avec changement simultané des deux",
+      "conditions_alt": [
+        {
+          "sens": "meme_sens",
+          "file": "file_differente",
+          "vehicule_X_change_file": false,
+          "vehicule_Y_change_file": false
+        },
+        {
+          "sens": "meme_sens",
+          "file": "file_differente",
+          "vehicule_X_change_file": true,
+          "vehicule_Y_change_file": true
+        }
+      ],
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      }
+    },
+    {
+      "id": "03",
+      "famille": "meme_sens_meme_chaussee",
+      "sous_famille": "files_differentes",
+      "titre": "Y change de file en bifurquant à gauche pendant que X double en empiétant sur l'axe médian (double sens)",
+      "conditions": {
+        "sens": "meme_sens",
+        "double_sens": true,
+        "vehicule_Y_action": [
+          "change_de_file",
+          "bifurque_a_gauche"
+        ],
+        "vehicule_X_action": [
+          "double_empiete_axe_median"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      },
+      "exceptions": [
+        {
+          "id": "03-exc1",
+          "titre": "Sens unique : Y change de file pour virer alors que X circule dans son couloir de marche",
+          "conditions": {
+            "sens_unique": true,
+            "vehicule_Y_action": [
+              "change_de_file_pour_virer"
+            ],
+            "vehicule_X_couloir_marche": true
+          },
+          "responsabilite": {
+            "X": 0.0,
+            "Y": 1.0
+          }
+        },
+        {
+          "id": "03-exc2",
+          "titre": "Y circule dans son couloir de marche alors que X double à gauche en empiétant sur l'axe médian",
+          "conditions": {
+            "vehicule_Y_couloir_marche": true,
+            "vehicule_X_action": [
+              "double_empiete_axe_median_gauche"
+            ]
+          },
+          "responsabilite": {
+            "X": 1.0,
+            "Y": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "famille": "meme_sens_meme_chaussee",
+      "sous_famille": "files_differentes",
+      "titre": "Y changeant de file (X ne change pas)",
+      "conditions": {
+        "sens": "meme_sens",
+        "vehicule_Y_change_file": true,
+        "vehicule_X_change_file": false
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "05",
+      "famille": "meme_sens_meme_chaussee",
+      "sous_famille": "quitte_stationnement",
+      "titre": "Y déboîtant pour quitter le stationnement",
+      "conditions": {
+        "vehicule_Y_action": [
+          "quitte_stationnement",
+          "deboite"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "notes": [
+        "L'arrêt de Y en oblique s'apprêtant à quitter le stationnement n'exclut pas sa responsabilité."
+      ],
+      "exceptions": [
+        {
+          "id": "05-exc1",
+          "titre": "X et Y manoeuvrent tous les deux pour prendre un stationnement",
+          "conditions": {
+            "vehicule_X_action": [
+              "manoeuvre_pour_stationner"
+            ],
+            "vehicule_Y_action": [
+              "manoeuvre_pour_stationner"
+            ]
+          },
+          "responsabilite": {
+            "X": 0.5,
+            "Y": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "famille": "sens_inverse",
+      "titre": "Y empiète ou dépasse l'axe médian, X circule dans son couloir de marche",
+      "conditions": {
+        "sens": "sens_inverse",
+        "vehicule_Y_action": [
+          "empiete_axe_median"
+        ],
+        "vehicule_X_couloir_marche": true
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "07",
+      "famille": "sens_inverse",
+      "titre": "X et Y empiètent tous deux sur l'axe médian, ou position non déterminable",
+      "conditions": {
+        "sens": "sens_inverse",
+        "vehicule_X_action": [
+          "empiete_axe_median"
+        ],
+        "vehicule_Y_action": [
+          "empiete_axe_median"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      },
+      "notes": [
+        "Si les trajectoires ne se coupent pas, la collision doit être appréciée comme un accident de croisement (voir cas 08-09)."
+      ]
+    },
+    {
+      "id": "08",
+      "famille": "chaussees_differentes",
+      "titre": "X prioritaire de droite, chaussée à double sens, empiète/franchit l'axe médian (axe non ligne continue), Y circule dans son couloir",
+      "conditions": {
+        "sens": "chaussees_differentes",
+        "vehicule_X_prioritaire_droite": true,
+        "chaussee_double_sens": true,
+        "axe_median_ligne_continue": false,
+        "vehicule_X_action": [
+          "empiete_ou_franchit_axe_median"
+        ],
+        "vehicule_Y_couloir_marche": true
+      },
+      "responsabilite": {
+        "X": 0.25,
+        "Y": 0.75
+      },
+      "notes": [
+        "Ne s'applique que si la position de X par rapport à l'axe médian de la chaussée d'où il provient est prouvée sans ambiguïté.",
+        "Si les trajectoires ne se coupent/rejoignent pas, la collision doit être appréciée comme un accident de sens inverse (cas 06-07)."
+      ]
+    },
+    {
+      "id": "09",
+      "famille": "chaussees_differentes",
+      "titre": "X prioritaire de droite circule dans son couloir de marche ou bifurque à droite/gauche",
+      "conditions": {
+        "sens": "chaussees_differentes",
+        "vehicule_X_prioritaire_droite": true,
+        "vehicule_X_action": [
+          "couloir_de_marche_ou_bifurque"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "10",
+      "famille": "stationnement_arret",
+      "titre": "X en stationnement régulier ou à l'arrêt régulier",
+      "conditions": {
+        "vehicule_X_stationnement": "regulier"
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "notes": [
+        "Pour ce cas et les trois suivants, il est indifférent que le conducteur soit à bord ou non du véhicule X."
+      ]
+    },
+    {
+      "id": "11",
+      "famille": "stationnement_arret",
+      "titre": "X en stationnement/arrêt interdit en agglomération le long d'un trottoir, ne gênant pas la circulation",
+      "conditions": {
+        "vehicule_X_stationnement": "irregulier_non_genant",
+        "agglomeration": true,
+        "position": "le_long_trottoir"
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "notes": [
+        "Le caractère irrégulier du stationnement n'est pas sanctionné car il ne gêne pas la circulation."
+      ]
+    },
+    {
+      "id": "12",
+      "famille": "stationnement_arret",
+      "titre": "X en stationnement/arrêt interdit en agglomération, cas autres que le n°11 (gênant)",
+      "conditions": {
+        "vehicule_X_stationnement": "irregulier_genant",
+        "agglomeration": true
+      },
+      "responsabilite": {
+        "X": 0.25,
+        "Y": 0.75
+      },
+      "notes": [
+        "1/4 de responsabilité est laissé à la charge de X qui constitue une gêne réelle. La gêne doit être prouvée."
+      ]
+    },
+    {
+      "id": "13",
+      "famille": "stationnement_arret",
+      "titre": "X en stationnement/arrêt irrégulier sur la chaussée hors agglomération",
+      "conditions": {
+        "vehicule_X_stationnement": "irregulier",
+        "agglomeration": false
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      },
+      "notes": [
+        "Ne s'applique pas aux véhicules en panne régulièrement signalés."
+      ]
+    },
+    {
+      "id": "14",
+      "famille": "cas_speciaux",
+      "titre": "Y ne respecte pas une signalisation (agent, priorité, feu, sens interdit, interdiction de dépasser/virer, ligne continue même sens, marquage au sol) ou circule sur trottoir/bas-côté",
+      "conditions": {
+        "vehicule_Y_action": [
+          "ne_respecte_pas_signalisation"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "signalisations_couvertes": [
+        "agent_de_circulation",
+        "signalisation_priorite",
+        "feu_de_signalisation",
+        "sens_interdit",
+        "interdiction_depasser",
+        "interdiction_virer_droite_gauche",
+        "ligne_continue_meme_sens",
+        "signalisation_au_sol",
+        "circule_trottoir_ou_bas_cote"
+      ]
+    },
+    {
+      "id": "15",
+      "famille": "cas_speciaux",
+      "titre": "Y circule en marche arrière ou effectue un demi-tour, quittant ou prenant un stationnement",
+      "conditions": {
+        "vehicule_Y_action": [
+          "marche_arriere_ou_demi_tour"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "exceptions": [
+        {
+          "id": "15-exc1",
+          "titre": "Chacun des véhicules effectue une marche arrière/demi-tour ou quitte/prend un stationnement",
+          "conditions": {
+            "vehicule_X_action": [
+              "marche_arriere_ou_demi_tour"
+            ],
+            "vehicule_Y_action": [
+              "marche_arriere_ou_demi_tour"
+            ]
+          },
+          "responsabilite": {
+            "X": 0.5,
+            "Y": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "famille": "cas_speciaux",
+      "titre": "Y sortant d'une aire de stationnement, d'un lieu non ouvert à la circulation, ou d'un chemin de terre",
+      "conditions": {
+        "vehicule_Y_action": [
+          "sort_aire_stationnement_ou_chemin_terre"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "exceptions": [
+        {
+          "id": "16-exc1",
+          "titre": "Chacun des véhicules sort ou s'engage simultanément",
+          "conditions": {
+            "vehicule_X_action": [
+              "sort_ou_s_engage_aire_stationnement"
+            ],
+            "vehicule_Y_action": [
+              "sort_ou_s_engage_aire_stationnement"
+            ]
+          },
+          "responsabilite": {
+            "X": 0.5,
+            "Y": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "famille": "cas_speciaux",
+      "titre": "X s'engageant dans une aire de stationnement, un lieu non ouvert à la circulation, ou un chemin de terre, SANS changement de file",
+      "conditions": {
+        "vehicule_X_action": [
+          "s_engage_aire_stationnement_ou_chemin_terre"
+        ],
+        "vehicule_X_change_file": false
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "18",
+      "famille": "cas_speciaux",
+      "titre": "X s'engageant dans une aire de stationnement, un lieu non ouvert à la circulation, ou un chemin de terre, AVEC changement de file",
+      "conditions": {
+        "vehicule_X_action": [
+          "s_engage_aire_stationnement_ou_chemin_terre"
+        ],
+        "vehicule_X_change_file": true
+      },
+      "responsabilite": {
+        "X": 1.0,
+        "Y": 0.0
+      }
+    },
+    {
+      "id": "19",
+      "famille": "cas_speciaux",
+      "titre": "X heurte une portière ouverte du véhicule Y",
+      "conditions": {
+        "vehicule_X_action": [
+          "heurte_portiere_ouverte"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      },
+      "notes": [
+        "S'applique que l'ouverture soit soudaine ou non, sauf ouverture des portières du côté du trottoir.",
+        "Idem pour les portes arrière d'un camion ou d'une camionnette."
+      ]
+    },
+    {
+      "id": "20",
+      "famille": "cas_speciaux",
+      "titre": "Y causant des dommages par jets de pierres ou par des objets transportés",
+      "conditions": {
+        "vehicule_Y_action": [
+          "jet_pierres_ou_objets"
+        ]
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "21",
+      "famille": "cas_speciaux",
+      "titre": "Y circulant sans éclairage hors agglomération",
+      "conditions": {
+        "vehicule_Y_action": [
+          "sans_eclairage"
+        ],
+        "agglomeration": false
+      },
+      "responsabilite": {
+        "X": 0.0,
+        "Y": 1.0
+      }
+    },
+    {
+      "id": "22",
+      "famille": "cas_speciaux",
+      "titre": "Y circulant sans éclairage en agglomération",
+      "conditions": {
+        "vehicule_Y_action": [
+          "sans_eclairage"
+        ],
+        "agglomeration": true
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      },
+      "notes": [
+        "X supporte la totalité de la responsabilité en cas de non-respect simultané de la signalisation de l'agent, d'un feu, ou d'un panneau de sens interdit (voir cas 14)."
+      ]
+    },
+    {
+      "id": "23",
+      "famille": "cas_speciaux",
+      "titre": "Impossibilité de prouver la cause de l'accident (désaccord sur la couleur des feux ou l'origine de l'accident)",
+      "conditions": {
+        "cause_indeterminable": true
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      }
+    },
+    {
+      "id": "24",
+      "famille": "cas_speciaux",
+      "titre": "Responsabilité totale des deux véhicules prouvée conformément à plusieurs cas du barème",
+      "conditions": {
+        "double_responsabilite_totale_prouvee": true
+      },
+      "responsabilite": {
+        "X": 0.5,
+        "Y": 0.5
+      }
+    }
+  ],
+  "collisions_multi_vehicules": [
+    {
+      "id": "chaine",
+      "titre": "Accidents en chaîne",
+      "definition": "3+ véhicules circulant dans le même sens et la même file ; le dernier véhicule heurte celui qui le précède et le projette sur le(s) véhicule(s) devant.",
+      "regle": "Le conducteur du dernier véhicule de la file supporte la responsabilité totale de l'accident.",
+      "conditions": {
+        "nombre_vehicules": ">=3",
+        "type_collision": "chaine"
+      }
+    },
+    {
+      "id": "chocs_successifs",
+      "titre": "Chocs successifs",
+      "definition": "3+ véhicules dans le même sens/file ; un véhicule à l'intérieur de la file heurte celui qui le précède et est à son tour heurté par celui qui le suit (B heurte A, C heurte B, D heurte C...).",
+      "regle": "Le véhicule le plus en amont (A) ne supporte aucune responsabilité. Chaque véhicule supporte la totalité de la responsabilité pour les dégâts à l'arrière du véhicule qui le précède directement.",
+      "conditions": {
+        "nombre_vehicules": ">=3",
+        "type_collision": "chocs_successifs"
+      }
+    },
+    {
+      "id": "croises",
+      "titre": "Accidents croisés",
+      "definition": "3+ véhicules, dont au moins un circule dans un sens ou sur une file différente des autres, quelle que soit la chaussée/voie/piste d'où ils proviennent.",
+      "regle": "Le véhicule à l'origine de l'accident supporte la totalité de la responsabilité, ou une part si d'autres parties y ont contribué conformément aux cas prévus par le barème (cas 01 à 24).",
+      "conditions": {
+        "nombre_vehicules": ">=3",
+        "type_collision": "croises"
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+<app-panel-card [numero]="6" titre="Détails techniques" spanClass="col-third" *ngIf="details">
+  <dl class="details-list">
+    <div class="details-list__row">
+      <dt>🆔 ID Analyse</dt>
+      <dd>{{ details.idAnalyse }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>🧠 Modèle IA utilisé</dt>
+      <dd>{{ details.modeleIA }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>📅 Date d'analyse</dt>
+      <dd>{{ details.dateAnalyse }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>⏱️ Durée d'analyse</dt>
+      <dd>{{ details.dureeAnalyse }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>📎 Sources utilisées</dt>
+      <dd>{{ details.sourcesUtilisees }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>📐 Règles appliquées</dt>
+      <dd>{{ details.reglesAppliquees }} règles FTUSA</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>🎯 Score de similarité cas</dt>
+      <dd>{{ details.scoreSimilariteCas }}</dd>
+    </div>
+    <div class="details-list__row">
+      <dt>🔁 Nombre de cas similaires trouvés</dt>
+      <dd>{{ details.nombreCasSimilaires }}</dd>
+    </div>
+  </dl>
+  <button type="button" class="btn btn--ghost details-list__cta">Voir le détail des cas similaires</button>
+</app-panel-card>

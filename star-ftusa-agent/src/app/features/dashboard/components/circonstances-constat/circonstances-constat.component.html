@@ -1,0 +1,47 @@
+<app-panel-card [numero]="4" titre="Circonstances extraites du constat" spanClass="col-third">
+  <div class="colonnes">
+    <div class="colonne" *ngIf="circonstancesA">
+      <h4>Véhicule A</h4>
+      <label class="check" *ngFor="let o of circonstancesA.options">
+        <input type="checkbox" [checked]="o.cochee" disabled />
+        {{ o.libelle }}
+      </label>
+    </div>
+
+    <div class="colonne" *ngIf="circonstancesB">
+      <h4>Véhicule B</h4>
+      <label class="check" *ngFor="let o of circonstancesB.options">
+        <input type="checkbox" [checked]="o.cochee" disabled />
+        {{ o.libelle }}
+      </label>
+    </div>
+
+    <div class="colonne" *ngIf="autresElements">
+      <h4>Autres éléments</h4>
+      <div class="field">
+        <label>Signalisation</label>
+        <input type="text" [value]="autresElements.signalisation" disabled />
+      </div>
+      <div class="field">
+        <label>Type de route</label>
+        <input type="text" [value]="autresElements.typeDeRoute" disabled />
+      </div>
+      <div class="field">
+        <label>Conditions météo</label>
+        <input type="text" [value]="autresElements.conditionsMeteo" disabled />
+      </div>
+      <div class="field">
+        <label>État de la chaussée</label>
+        <input type="text" [value]="autresElements.etatChaussee" disabled />
+      </div>
+      <div class="field">
+        <label>Visibilité</label>
+        <input type="text" [value]="autresElements.visibilite" disabled />
+      </div>
+      <div class="field">
+        <label>Observations (extraites)</label>
+        <textarea rows="3" disabled>{{ autresElements.observations }}</textarea>
+      </div>
+    </div>
+  </div>
+</app-panel-card>

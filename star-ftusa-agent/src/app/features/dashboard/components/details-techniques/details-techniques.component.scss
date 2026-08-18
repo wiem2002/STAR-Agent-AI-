@@ -1,0 +1,28 @@
+.details-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.details-list__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 12px;
+}
+.details-list__row:last-child { border-bottom: none; }
+.details-list__row dt { color: var(--ink-500); font-weight: 600; }
+.details-list__row dd {
+  margin: 0;
+  color: var(--ink-900);
+  font-weight: 700;
+  text-align: right;
+  max-width: 58%;
+}
+
+.details-list__cta {
+  width: 100%;
+  justify-content: center;
+  margin-top: 14px;
+}

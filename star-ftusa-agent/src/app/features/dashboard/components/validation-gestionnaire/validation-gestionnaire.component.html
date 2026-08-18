@@ -1,0 +1,54 @@
+<app-panel-card [numero]="7" titre="Validation par le gestionnaire" spanClass="col-half">
+  <div class="validation-grid">
+    <div class="validation-col">
+      <h4>Décision IA</h4>
+      <div class="resume">
+        <div class="resume__row">
+          <span>Cas proposé</span>
+          <strong>{{ casPropose }}</strong>
+        </div>
+        <div class="resume__row">
+          <span>Confiance</span>
+          <strong>{{ confianceIA }}%</strong>
+        </div>
+      </div>
+
+      <h4>Votre décision</h4>
+      <label class="radio">
+        <input type="radio" name="decision" value="accepter" [(ngModel)]="decision" />
+        Accepter la proposition IA
+      </label>
+      <label class="radio">
+        <input type="radio" name="decision" value="modifier" [(ngModel)]="decision" />
+        Modifier la responsabilité
+      </label>
+      <label class="radio">
+        <input type="radio" name="decision" value="autre-cas" [(ngModel)]="decision" />
+        Choisir un autre cas FTUSA
+      </label>
+
+      <div class="responsabilite-inputs" *ngIf="decision === 'modifier'">
+        <div class="field">
+          <label>Responsabilité A (%)</label>
+          <input type="number" min="0" max="100" [(ngModel)]="responsabiliteA" name="respA" />
+        </div>
+        <div class="field">
+          <label>Responsabilité B (%)</label>
+          <input type="number" min="0" max="100" [(ngModel)]="responsabiliteB" name="respB" />
+        </div>
+      </div>
+    </div>
+
+    <div class="validation-col">
+      <h4>Commentaire (optionnel)</h4>
+      <textarea rows="6" maxlength="500" [(ngModel)]="commentaire" name="commentaire" placeholder="Saisir un commentaire..."></textarea>
+      <span class="compteur">{{ commentaireLongueur }}/500</span>
+
+      <div class="validation-actions">
+        <button type="button" class="btn btn--outline" (click)="navigationService.setSection('nouveau-dossier')">Annuler</button>
+        <button type="button" class="btn btn--ghost">⤷ Demander plus d'informations</button>
+        <button type="button" class="btn btn--primary" (click)="validerEtCloturer()">✓ Valider et clôturer le dossier</button>
+      </div>
+    </div>
+  </div>
+</app-panel-card>

@@ -1,0 +1,57 @@
+<app-panel-card [numero]="5" titre="Résultat de l'analyse IA" spanClass="col-third" *ngIf="resultat">
+  <div class="resultat-grid">
+    <div class="resultat-col">
+      <div class="cas-box">
+        <span class="cas-box__eyebrow">Cas de barème FTUSA proposé</span>
+        <strong class="cas-box__titre">{{ resultat.titreCas }}</strong>
+        <span class="cas-box__regle">{{ resultat.regleAppliquee }}</span>
+      </div>
+
+      <div class="responsabilites">
+        <div class="responsabilite">
+          <small>Responsabilité A</small>
+          <strong>{{ resultat.responsabiliteA }}%</strong>
+        </div>
+        <div class="responsabilite">
+          <small>Responsabilité B</small>
+          <strong>{{ resultat.responsabiliteB }}%</strong>
+        </div>
+      </div>
+
+      <div class="confiance">
+        <div class="confiance__label">
+          <span>Niveau de confiance IA</span>
+          <strong>{{ resultat.niveauConfiance }}%</strong>
+        </div>
+        <div class="confiance__track">
+          <div class="confiance__fill" [style.width.%]="resultat.niveauConfiance"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultat-col">
+      <h4>Justification IA</h4>
+      <p class="justification">{{ resultat.justification }}</p>
+
+      <h4>Éléments clés utilisés par l'IA</h4>
+      <div class="chips">
+        <span class="chip" *ngFor="let el of resultat.elementsClesUtilises">{{ el }}</span>
+      </div>
+
+      <h4>Dommages détectés</h4>
+      <div class="dommages">
+        <div class="dommage">
+          <span class="dommage__thumb">🚗</span>
+          <small>Véhicule A</small>
+        </div>
+        <div class="dommage">
+          <span class="dommage__thumb">🚙</span>
+          <small>Véhicule B</small>
+        </div>
+      </div>
+      <div class="decision-actions">
+        <button type="button" class="btn btn--primary" (click)="suivant()">Suivant</button>
+      </div>
+    </div>
+  </div>
+</app-panel-card>

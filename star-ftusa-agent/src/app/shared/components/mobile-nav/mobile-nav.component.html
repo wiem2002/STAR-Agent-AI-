@@ -1,0 +1,26 @@
+<div class="phone">
+  <div class="phone__notch"></div>
+  <div class="phone__toolbar">
+    <span>↻</span><span>⏸</span><span>🖨</span><span>↗</span><span>▶</span>
+  </div>
+  <div class="phone__drawer">
+    <div class="phone__brand">
+      <span class="phone__star">★</span>
+      <div>
+        <strong>STAR</strong>
+        <small>ASSURANCES TUNISIE</small>
+      </div>
+    </div>
+    <nav class="phone__nav">
+      <button
+        *ngFor="let item of navItems"
+        class="phone__item"
+        [class.phone__item--actif]="item.actif"
+        type="button"
+      >
+        <span>{{ item.icone }}</span>{{ item.libelle }}
+      </button>
+    </nav>
+  </div>
+  <div class="phone__backdrop"></div>
+</div>

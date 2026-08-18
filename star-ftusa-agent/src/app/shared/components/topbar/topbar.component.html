@@ -1,0 +1,23 @@
+<header class="topbar">
+  <div class="topbar__left">
+    <button class="topbar__burger" type="button" (click)="toggleMenu.emit()" aria-label="Ouvrir le menu">
+      <span></span><span></span><span></span>
+    </button>
+    <h1 class="topbar__titre">AGENT IA – DÉTERMINATION DU BARÈME FTUSA</h1>
+  </div>
+
+  <div class="topbar__right">
+    <button class="topbar__lang" type="button">🇫🇷 FR ▾</button>
+    <button class="topbar__notif" type="button" aria-label="Notifications">
+      🔔
+      <span class="topbar__notif-badge">{{ notifications }}</span>
+    </button>
+    <div class="topbar__user">
+      <div class="topbar__avatar">NB</div>
+      <div class="topbar__user-text">
+        <strong>{{ utilisateur }}</strong>
+        <small>{{ role }}</small>
+      </div>
+    </div>
+  </div>
+</header>

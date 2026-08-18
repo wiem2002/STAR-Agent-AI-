@@ -1,0 +1,41 @@
+<app-panel-card [numero]="2" titre="Nouveau dossier" spanClass="col-third">
+  <div class="tabs">
+    <button type="button" [class.tabs__item--actif]="ongletActif === 'pieces'" class="tabs__item" (click)="choisirOnglet('pieces')">2 Pièces jointes</button>
+    <button type="button" [class.tabs__item--actif]="ongletActif === 'analyse'" class="tabs__item" (click)="choisirOnglet('analyse')">3 Lancer l'analyse</button>
+  </div>
+
+  <div *ngIf="ongletActif === 'pieces'" class="placeholder">
+    <p>Ajoutez le constat en PDF ou en image, ainsi que les photos des véhicules accidentés.</p>
+    <input #fileInput type="file" class="file-input" accept="application/pdf,image/*" multiple (change)="gererFichiers($event)" />
+    <button type="button" class="dropzone" (click)="ouvrirSelecteurFichiers(fileInput)" (dragover)="autoriserDepose($event)" (drop)="deposerFichiers($event)">
+      📎 Cliquer pour ajouter ou glisser-déposer les fichiers ici
+    </button>
+
+    <div class="files" *ngIf="piecesJointes.length">
+      <div class="files__title">Pièces ajoutées</div>
+      <div class="files__item" *ngFor="let piece of piecesJointes">
+        <span class="files__name">{{ piece.nom }}</span>
+        <span class="files__meta">{{ piece.type }} · {{ piece.taille }}</span>
+        <button type="button" class="files__remove" (click)="retirerPiece(piece)">✕</button>
+      </div>
+    </div>
+
+    <p class="erreur" *ngIf="erreur">{{ erreur }}</p>
+
+    <div class="form__actions">
+      <button type="button" class="btn btn--primary" (click)="choisirOnglet('analyse')">Suivant</button>
+    </div>
+  </div>
+
+  <div *ngIf="ongletActif === 'analyse'" class="placeholder">
+    <p>Les pièces jointes sont prêtes. Lancez l'analyse IA pour déterminer le cas de barème FTUSA applicable.</p>
+    <div *ngIf="previewUrl" class="pdf-preview">
+      <div class="pdf-preview__title">Aperçu du constat chargé</div>
+      <iframe [src]="previewUrl" width="100%" height="500px"></iframe>
+    </div>
+    <div class="form__actions">
+      <button type="button" class="btn btn--outline" (click)="choisirOnglet('pieces')">Précédent</button>
+      <button type="button" class="btn btn--primary" (click)="lancerAnalyse()">🚀 Lancer l'analyse</button>
+    </div>
+  </div>
+</app-panel-card>

@@ -1,0 +1,121 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.topbar__burger {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+}
+.topbar__burger span {
+  width: 20px;
+  height: 2px;
+  background: var(--ink-900);
+  border-radius: 2px;
+}
+
+.topbar__titre {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--star-green-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.topbar__lang {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topbar__notif {
+  position: relative;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.topbar__notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--star-red);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  min-width: 16px;
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+.topbar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--star-green-600);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.topbar__user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.topbar__user-text strong { font-size: 12.5px; }
+.topbar__user-text small { font-size: 10.5px; color: var(--ink-500); }
+
+@media (max-width: 900px) {
+  .topbar__burger { display: flex; }
+  .topbar__titre { font-size: 14px; }
+  .topbar__user-text { display: none; }
+  .topbar__lang { display: none; }
+}
