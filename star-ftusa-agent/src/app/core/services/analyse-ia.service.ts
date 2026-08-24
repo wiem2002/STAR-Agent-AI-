@@ -1,26 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, shareReplay, of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import {
   DetailsTechniquesAnalyse,
   EtapeAnalyse,
+  ReponseApiAnalyseComplete,
   ResultatAnalyseIA,
 } from '../models/analyse-ia.model';
 import { CirconstancesVehicule, AutresElements } from '../models/circonstance.model';
 import { environment } from '../../../environments/environment';
-
-/** Forme exacte de la réponse JSON renvoyée par l'API backend (main.py). */
-interface ReponseApiAnalyse {
-  circonstancesA: number[];
-  circonstancesB: number[];
-  casId: string;
-  titre: string;
-  responsabiliteA: number | null;
-  responsabiliteB: number | null;
-  niveauConfiance: number;
-  aValider: boolean;
-  justification: string;
-}
 
 const ETAPES_MOCK: EtapeAnalyse[] = [
   { ordre: 1, libelle: 'OCR constat', statut: 'attente' },
@@ -30,15 +19,15 @@ const ETAPES_MOCK: EtapeAnalyse[] = [
   { ordre: 5, libelle: 'IA - Recherche cas FTUSA', statut: 'attente' },
 ];
 
-const DETAILS_MOCK: DetailsTechniquesAnalyse = {
-  idAnalyse: 'AN-2025-000123',
-  modeleIA: 'FTUSA-Model v2.1',
-  dateAnalyse: new Date().toLocaleString('fr-FR'),
-  dureeAnalyse: '00:00:18',
-  sourcesUtilisees: 'Constat, Croquis, Règles FTUSA',
-  reglesAppliquees: 17,
-  scoreSimilariteCas: 0.94,
-  nombreCasSimilaires: 12,
+const DETAILS_VIDES: DetailsTechniquesAnalyse = {
+  idAnalyse: '',
+  modeleIA: '',
+  dateAnalyse: '',
+  dureeAnalyse: '00:00:00',
+  sourcesUtilisees: [],
+  reglesAppliquees: 0,
+  scoreSimilariteCas: 0,
+  nombreCasSimilaires: 0,
 };
 
 const CIRCONSTANCES_A_MOCK: CirconstancesVehicule = {
@@ -67,6 +56,7 @@ export class AnalyseIaService {
   /** Résultat de la dernière analyse réelle, mis en cache pour que
    * ResultatAnalyseComponent puisse le relire sans relancer l'appel. */
   private dernierResultat$?: Observable<ResultatAnalyseIA>;
+  private readonly detailsTechniquesSubject = new BehaviorSubject<DetailsTechniquesAnalyse>(DETAILS_VIDES);
 
   constructor(private readonly http: HttpClient) {}
 
@@ -80,16 +70,24 @@ export class AnalyseIaService {
    * est mis en cache (shareReplay) pour que getResultatAnalyse() puisse
    * le relire ensuite sans relancer l'analyse.
    */
-  analyserConstat(fichierConstat: File, page = 0, colGauche: 'A' | 'B' = 'A'): Observable<ResultatAnalyseIA> {
+  analyserConstat(
+    fichierConstat: File,
+    numeroSinistre: string,
+    page = 0,
+    colGauche: 'A' | 'B' = 'A'
+  ): Observable<ResultatAnalyseIA> {
     const formData = new FormData();
     formData.append('fichier', fichierConstat, fichierConstat.name);
 
-    const params = { page: page.toString(), colGauche };
+    const params = { page: page.toString(), colGauche, numeroSinistre };
 
     this.dernierResultat$ = this.http
-      .post<ReponseApiAnalyse>(this.apiUrl, formData, { params })
+      .post<ReponseApiAnalyseComplete>(this.apiUrl, formData, { params })
       .pipe(
-        map((r) => this.mapReponseApiVersModele(r)),
+        map((r) => {
+          this.detailsTechniquesSubject.next(this.mapReponseApiVersDetails(r));
+          return this.mapReponseApiVersModele(r);
+        }),
         shareReplay(1)
       );
 
@@ -116,7 +114,7 @@ export class AnalyseIaService {
   }
 
   getDetailsTechniques(): Observable<DetailsTechniquesAnalyse> {
-    return of(DETAILS_MOCK);
+    return this.detailsTechniquesSubject.asObservable();
   }
 
   getCirconstancesVehiculeA(): Observable<CirconstancesVehicule> {
@@ -131,7 +129,7 @@ export class AnalyseIaService {
     return of(AUTRES_ELEMENTS_MOCK);
   }
 
-  private mapReponseApiVersModele(r: ReponseApiAnalyse): ResultatAnalyseIA {
+  private mapReponseApiVersModele(r: ReponseApiAnalyseComplete): ResultatAnalyseIA {
     return {
       casPropose: Number(r.casId) || 0,
       titreCas: `Cas N° ${r.casId}`,
@@ -144,6 +142,21 @@ export class AnalyseIaService {
         ...r.circonstancesA.map((n) => `A: circonstance ${n}`),
         ...r.circonstancesB.map((n) => `B: circonstance ${n}`),
       ],
+      croquisImageBase64: r.croquisImageBase64,
+      croquis: r.croquis ?? null,
+    };
+  }
+
+  private mapReponseApiVersDetails(r: ReponseApiAnalyseComplete): DetailsTechniquesAnalyse {
+    return {
+      idAnalyse: r.idAnalyse,
+      modeleIA: r.modeleIA,
+      dateAnalyse: r.dateAnalyse,
+      dureeAnalyse: r.dureeAnalyse,
+      sourcesUtilisees: r.sourcesUtilisees,
+      reglesAppliquees: r.reglesAppliquees,
+      scoreSimilariteCas: r.scoreSimilariteCas,
+      nombreCasSimilaires: r.nombreCasSimilaires,
     };
   }
 }

@@ -8,7 +8,9 @@ comme un service backend classique.
 """
 import os
 import sys
+import time
 import tempfile
+from datetime import datetime
 import cv2
 import fitz  # PyMuPDF
 import numpy as np
@@ -35,6 +37,9 @@ from huggingface_hub import HfApi, hf_hub_download
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.modules.pop("moteur_ftusa", None)
 from moteur_ftusa import MoteurFTUSA
+
+
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 
 
 # ============================================================
@@ -119,6 +124,65 @@ def pdf_vers_image(pdf_bytes, num_page=0, dpi=300, sortie=None):
     pix.save(sortie)
     doc.close()
     return sortie
+
+
+# ============================================================
+# 3.b Cache PDF des constats
+# ============================================================
+def _normaliser_numero_sinistre(numero_sinistre):
+    nettoye = numero_sinistre.strip()
+    for caractere in ("/", "\\", ":", " ", "?", "*"):
+        nettoye = nettoye.replace(caractere, "_")
+    return nettoye
+
+
+def chemin_cache_pdf(numero_sinistre):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    return os.path.join(CACHE_DIR, f"{_normaliser_numero_sinistre(numero_sinistre)}.pdf")
+
+
+def sauvegarder_pdf_cache(numero_sinistre, pdf_bytes):
+    chemin = chemin_cache_pdf(numero_sinistre)
+    with open(chemin, "wb") as fichier_cache:
+        fichier_cache.write(pdf_bytes)
+    os.utime(chemin, None)
+    return chemin
+
+
+def charger_pdf_cache(numero_sinistre):
+    chemin = chemin_cache_pdf(numero_sinistre)
+    if not os.path.exists(chemin):
+        return None
+    with open(chemin, "rb") as fichier_cache:
+        return fichier_cache.read()
+
+
+def nettoyer_cache_expire(ttl_minutes=60):
+    if not os.path.isdir(CACHE_DIR):
+        print("Nettoyage cache PDF : 0 fichier supprimé")
+        return 0
+
+    maintenant = time.time()
+    ttl_secondes = ttl_minutes * 60
+    supprimes = 0
+
+    for nom_fichier in os.listdir(CACHE_DIR):
+        chemin = os.path.join(CACHE_DIR, nom_fichier)
+        if not os.path.isfile(chemin):
+            continue
+        try:
+            age = maintenant - os.path.getmtime(chemin)
+        except OSError:
+            continue
+        if age > ttl_secondes:
+            try:
+                os.remove(chemin)
+                supprimes += 1
+            except OSError:
+                continue
+
+    print(f"Nettoyage cache PDF : {supprimes} fichier(s) supprimé(s)")
+    return supprimes
 
 
 # ============================================================
@@ -267,6 +331,54 @@ def determiner_cas_oriente(moteur, circonstances_A, circonstances_B):
     return meilleur, resp_A, resp_B
 
 
+def _compter_candidats_similaires(moteur, faits):
+    """Compte les cas du barème qui correspondent exactement aux faits.
+
+    On conserve ce calcul côté pipeline pour exposer une métrique stable à l'UI
+    sans dépendre d'un attribut interne du moteur.
+    """
+    candidats = set()
+    for cas in moteur.cas:
+        for exception in cas.get("exceptions", []):
+            if moteur._match(faits, exception["conditions"]):
+                candidats.add(exception["id"])
+        jeux_conditions = cas.get("conditions_alt") or [cas.get("conditions", {})]
+        for jeu in jeux_conditions:
+            if jeu and moteur._match(faits, jeu):
+                candidats.add(cas["id"])
+    return len(candidats)
+
+
+def determiner_cas_oriente_avec_compteur(moteur, circonstances_A, circonstances_B):
+    """Version orientée qui retourne aussi le nombre de cas similaires.
+
+    Le compteur permet d'alimenter les détails techniques affichés dans l'UI.
+    """
+    faits_A_est_X = _construire_faits(circonstances_A, circonstances_B, "X")
+    faits_A_est_Y = _construire_faits(circonstances_A, circonstances_B, "Y")
+
+    resultat_A_est_X = moteur.determiner_cas(faits_A_est_X)
+    resultat_A_est_Y = moteur.determiner_cas(faits_A_est_Y)
+
+    candidats = [(resultat_A_est_X, "X", faits_A_est_X), (resultat_A_est_Y, "Y", faits_A_est_Y)]
+    candidats.sort(key=lambda c: (c[0].confiance, not c[0].a_valider), reverse=True)
+    meilleur, role_A, faits_retenus = candidats[0]
+
+    if role_A == "X":
+        resp_A = meilleur.responsabilite.get("X")
+        resp_B = meilleur.responsabilite.get("Y")
+    else:
+        resp_A = meilleur.responsabilite.get("Y")
+        resp_B = meilleur.responsabilite.get("X")
+
+    if (resultat_A_est_X.confiance == resultat_A_est_Y.confiance
+            and resultat_A_est_X.cas_id != resultat_A_est_Y.cas_id):
+        meilleur.a_valider = True
+
+    nombre_candidats_similaires = _compter_candidats_similaires(moteur, faits_retenus)
+    return meilleur, resp_A, resp_B, nombre_candidats_similaires
+
+
 def generer_justification(resultat, circonstances_A, circonstances_B):
     libelles_A = [CIRCUMSTANCE_LABELS[n] for n in circonstances_A if n in CIRCUMSTANCE_LABELS]
     libelles_B = [CIRCUMSTANCE_LABELS[n] for n in circonstances_B if n in CIRCUMSTANCE_LABELS]
@@ -284,11 +396,19 @@ def generer_justification(resultat, circonstances_A, circonstances_B):
 # ============================================================
 # 6. Pipeline complet (ce que l'API va appeler)
 # ============================================================
-def analyser_constat(model_checkbox, moteur, pdf_bytes, num_page=0, col_gauche="A"):
+def analyser_constat(model_checkbox, moteur, pdf_bytes, num_page=0, col_gauche="A", numero_sinistre=None):
+    debut = time.perf_counter()
+    date_analyse = datetime.now()
+    id_analyse = f"AN-{date_analyse:%Y%m%d%H%M%S}"
     image_path = pdf_vers_image(pdf_bytes, num_page=num_page)
     circonstances = extraire_circonstances_cochees(model_checkbox, image_path, col_gauche=col_gauche)
-    resultat, resp_A, resp_B = determiner_cas_oriente(moteur, circonstances["A"], circonstances["B"])
+    resultat, resp_A, resp_B, nombre_candidats_similaires = determiner_cas_oriente_avec_compteur(
+        moteur, circonstances["A"], circonstances["B"]
+    )
     justification = generer_justification(resultat, circonstances["A"], circonstances["B"])
+    duree_secondes = time.perf_counter() - debut
+    heures, reste = divmod(int(duree_secondes), 3600)
+    minutes, secondes = divmod(reste, 60)
 
     return {
         "circonstancesA": circonstances["A"],
@@ -300,4 +420,13 @@ def analyser_constat(model_checkbox, moteur, pdf_bytes, num_page=0, col_gauche="
         "niveauConfiance": round(resultat.confiance * 100),
         "aValider": resultat.a_valider,
         "justification": justification,
+        "idAnalyse": id_analyse,
+        "modeleIA": "FTUSA-Model v2.1",
+        "dateAnalyse": date_analyse.isoformat(),
+        "dureeAnalyse": f"{heures:02d}:{minutes:02d}:{secondes:02d}",
+        "sourcesUtilisees": ["Constat", "Croquis", "Règles FTUSA"],
+        "reglesAppliquees": len(moteur.cas),
+        "scoreSimilariteCas": resultat.confiance,
+        "nombreCasSimilaires": nombre_candidats_similaires,
+        "_imagePath": image_path,
     }

@@ -70,35 +70,271 @@
   overflow: hidden;
 }
 .preview-frame--doc { background: repeating-linear-gradient(180deg, #fff, #fff 8px, var(--star-green-50) 8px, var(--star-green-50) 9px); }
-.preview-frame--sketch { background: var(--star-green-50); }
+.preview-frame--sketch {
+  background: #f2f6f4;
+  overflow: hidden;
+}
 
-.sketch-road { position: absolute; background: #c9d6cf; }
-.sketch-road--h { width: 100%; height: 20px; top: 50%; transform: translateY(-50%); }
-.sketch-road--v { height: 100%; width: 20px; left: 50%; transform: translateX(-50%); }
-.sketch-car {
+// ── Routes ──────────────────────────────────────────────────────────
+$road-color: #e8eeec;
+$road-border: #b0c4bc;
+$road-w: 30px;
+
+.sketch-road {
   position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
+  background: $road-color;
+  border: 1.5px solid $road-border;
+}
+
+.sketch-road--h {
+  width: 100%;
+  height: $road-w;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: 0;
+  border-right: 0;
+}
+
+.sketch-road--v {
+  height: 100%;
+  width: $road-w;
+  left: 50%;
+  transform: translateX(-50%);
+  border-top: 0;
+  border-bottom: 0;
+}
+
+.sketch-road--v-half {
+  height: 50%;
+  width: $road-w;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  border-bottom: 0;
+}
+
+// Coins pour masquer les coins de l'intersection (fond neutre)
+.sketch-corner {
+  position: absolute;
+  width: calc(50% - #{$road-w * 0.5});
+  height: calc(50% - #{$road-w * 0.5});
+  background: #f2f6f4;
+  border: 1.5px solid $road-border;
+  z-index: 1;
+}
+.sketch-corner--tl { top: 0;   left: 0;  border-top: 0; border-left: 0; border-radius: 0 0 6px 0; }
+.sketch-corner--tr { top: 0;   right: 0; border-top: 0; border-right: 0; border-radius: 0 0 0 6px; }
+.sketch-corner--bl { bottom: 0; left: 0; border-bottom: 0; border-left: 0; border-radius: 0 6px 0 0; }
+.sketch-corner--br { bottom: 0; right: 0; border-bottom: 0; border-right: 0; border-radius: 6px 0 0 0; }
+
+// Ligne centrale pointillée
+.sketch-centerline {
+  position: absolute;
+  background: repeating-linear-gradient(
+    to right,
+    #7da898 0 8px,
+    transparent 8px 14px
+  );
+  z-index: 2;
+}
+.sketch-centerline--h {
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.sketch-centerline--v {
+  height: 100%;
+  width: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    to bottom,
+    #7da898 0 8px,
+    transparent 8px 14px
+  );
+}
+
+// Rond-point
+.sketch-roundabout {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  border: 2px solid $road-border;
+  background: radial-gradient(circle, #f2f6f4 0 18px, $road-color 18px 28px, #f2f6f4 28px 100%);
+  z-index: 3;
+}
+
+// ── Véhicules ────────────────────────────────────────────────────────
+.sketch-vehicle {
+  position: absolute;
+  width: 52px;
+  height: 26px;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.sketch-car--a { background: var(--star-green-600); top: 58%; left: 22%; }
-.sketch-car--b { background: var(--star-red); top: 22%; left: 55%; }
+
+.sketch-vehicle__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sketch-vehicle--a .sketch-vehicle__svg rect:first-child,
+.sketch-vehicle--a .sketch-vehicle__svg rect:nth-child(2) {
+  fill: #2563eb;
+}
+.sketch-vehicle--a .sketch-vehicle__svg rect:nth-child(3),
+.sketch-vehicle--a .sketch-vehicle__svg rect:nth-child(4) {
+  fill: #1d4ed8;
+}
+
+.sketch-vehicle--b .sketch-vehicle__svg rect:first-child,
+.sketch-vehicle--b .sketch-vehicle__svg rect:nth-child(2) {
+  fill: #dc2626;
+}
+.sketch-vehicle--b .sketch-vehicle__svg rect:nth-child(3),
+.sketch-vehicle--b .sketch-vehicle__svg rect:nth-child(4) {
+  fill: #b91c1c;
+}
+
+.sketch-vehicle__label {
+  position: relative;
+  z-index: 5;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin-top: -4px;
+}
+
+// Flèche de direction (pointe vers la droite = angle 0)
+.sketch-vehicle__arrow {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid rgba(0,0,0,0.35);
+  z-index: 5;
+}
+
+.sketch-vehicle--b .sketch-vehicle__arrow {
+  right: auto;
+  left: -10px;
+  border-left: 0;
+  border-right: 8px solid rgba(0,0,0,0.35);
+}
+
+// ── Panneau STOP ────────────────────────────────────────────────────
+.sketch-stop-sign {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 5;
+  transform: translate(-50%, -100%);
+}
+
+.sketch-stop-sign__octagon {
+  width: 30px;
+  height: 30px;
+  background: #dc2626;
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.sketch-stop-sign__pole {
+  width: 2px;
+  height: 12px;
+  background: #6b7280;
+}
+
+// ── Badge type intersection ────────────────────────────────────────
+.sketch-type-badge {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.85);
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #374151;
+  padding: 1px 8px;
+  white-space: nowrap;
+  z-index: 6;
+}
+
+// ── Placeholder ────────────────────────────────────────────────────
+.sketch-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-400);
+  font-size: 11px;
+  span { font-size: 24px; }
+  p { margin: 0; }
+}
+
+// ── Miniature scan source ──────────────────────────────────────────
+.sketch-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sketch-source__label {
+  font-size: 9.5px;
+  color: var(--ink-400);
+  white-space: nowrap;
+}
+
+.sketch-source__img {
+  height: 32px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  flex: 1;
+  min-width: 0;
+}
+
+.sketch-vehicle--a .sketch-vehicle__body {
+  background: #2563eb;
+}
+
+.sketch-vehicle--b .sketch-vehicle__body {
+  background: #dc2626;
+}
+
 .sketch-stop {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: var(--star-red);
+  transform: translate(-50%, -50%);
+  background: #dc2626;
   color: #fff;
   font-size: 8px;
   font-weight: 800;
-  padding: 2px 5px;
-  border-radius: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  z-index: 2;
 }
 
 .photo-grid {
