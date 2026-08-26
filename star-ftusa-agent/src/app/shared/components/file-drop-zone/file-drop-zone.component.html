@@ -1,0 +1,36 @@
+<div class="fdz">
+  <input
+    #fileInput
+    type="file"
+    class="fdz__input"
+    [accept]="accept"
+    [multiple]="multiple"
+    (change)="onFichiers($event)"
+  />
+
+  <button
+    type="button"
+    class="fdz__zone"
+    [class.fdz__zone--survol]="survol"
+    (click)="ouvrir(fileInput)"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()"
+    (drop)="onDrop($event)"
+  >
+    <span class="fdz__icone">{{ icone }}</span>
+    <span class="fdz__label">{{ label }}</span>
+    <span class="fdz__hint">{{ multiple ? 'Plusieurs fichiers acceptés' : '1 fichier max' }}</span>
+  </button>
+
+  <div class="fdz__liste" *ngIf="fichiers.length">
+    <div class="fdz__item" *ngFor="let f of fichiers; let i = index">
+      <img *ngIf="miniature(f) as src" [src]="src" class="fdz__thumb" alt="" />
+      <span *ngIf="!miniature(f)" class="fdz__thumb fdz__thumb--pdf">📄</span>
+      <div class="fdz__info">
+        <span class="fdz__nom">{{ f.name }}</span>
+        <span class="fdz__taille">{{ formaterTaille(f.size) }}</span>
+      </div>
+      <button type="button" class="fdz__retirer" (click)="retirer(i)" aria-label="Retirer">✕</button>
+    </div>
+  </div>
+</div>

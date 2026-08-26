@@ -1,147 +1,104 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { PanelCardComponent } from '../../../../shared/components/panel-card/panel-card.component';
+import { FileDropZoneComponent } from '../../../../shared/components/file-drop-zone/file-drop-zone.component';
 import { NavigationService } from '../../../../core/services/navigation.service';
 import { DossierCourantService } from '../../../../core/services/dossier-courant.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 type Onglet = 'pieces' | 'analyse';
 
-interface PieceJointeSelectionnee {
-  nom: string;
-  type: string;
-  taille: string;
-  fichier: File;
-}
-
 @Component({
   selector: 'app-nouveau-dossier',
   standalone: true,
-  imports: [CommonModule, FormsModule, PanelCardComponent],
+  imports: [CommonModule, PanelCardComponent, FileDropZoneComponent],
   templateUrl: './nouveau-dossier.component.html',
   styleUrl: './nouveau-dossier.component.scss',
 })
 export class NouveauDossierComponent {
   ongletActif: Onglet = 'pieces';
-  piecesJointes: PieceJointeSelectionnee[] = [];
   erreur: string | null = null;
 
-  private readonly formatsAutorisés = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-  // Preview URL for the uploaded PDF (sanitized for binding)
+  constat: File | null = null;
+  photosA: File[] = [];
+  photosB: File[] = [];
+
   previewUrl: SafeResourceUrl | null = null;
   private rawPreviewUrl: string | null = null;
 
   constructor(
     private readonly navigationService: NavigationService,
-    private readonly dossierCourantService: DossierCourantService
-    , private readonly sanitizer: DomSanitizer
+    private readonly dossierCourantService: DossierCourantService,
+    private readonly sanitizer: DomSanitizer,
   ) {}
+
+  get peutContinuer(): boolean {
+    return !!this.constat && this.photosA.length > 0 && this.photosB.length > 0;
+  }
+
+  onConstatChange(fichiers: File[]): void {
+    this.constat = fichiers[0] ?? null;
+    this._refreshPreview();
+  }
+
+  onPhotosAChange(fichiers: File[]): void {
+    this.photosA = fichiers;
+  }
+
+  onPhotosBChange(fichiers: File[]): void {
+    this.photosB = fichiers;
+  }
 
   choisirOnglet(onglet: Onglet): void {
     this.ongletActif = onglet;
   }
 
-  lancerAnalyse(): void {
-    const constat = this.piecesJointes.find((p) => p.type === 'application/pdf');
-
-    if (!constat) {
-      this.erreur = "Ajoute le constat au format PDF avant de lancer l'analyse.";
-      this.choisirOnglet('pieces');
+  suivant(): void {
+    this.erreur = null;
+    if (!this.constat) {
+      this.erreur = 'Ajoutez le constat amiable (PDF ou image) avant de continuer.';
       return;
     }
+    if (!this.photosA.length) {
+      this.erreur = 'Ajoutez au moins une photo du véhicule A.';
+      return;
+    }
+    if (!this.photosB.length) {
+      this.erreur = 'Ajoutez au moins une photo du véhicule B.';
+      return;
+    }
+    this.ongletActif = 'analyse';
+  }
 
-    const photos = this.piecesJointes
-      .filter((p) => p.type !== 'application/pdf')
-      .map((p) => p.fichier);
-
-    this.dossierCourantService.definirConstat(constat.fichier);
-    this.dossierCourantService.definirPhotos(photos);
-
+  lancerAnalyse(): void {
+    if (!this.constat) return;
+    this.dossierCourantService.definirConstat(this.constat);
+    this.dossierCourantService.definirPhotosA(this.photosA);
+    this.dossierCourantService.definirPhotosB(this.photosB);
     this.navigationService.setSection('analyse-ia');
   }
 
-  ouvrirSelecteurFichiers(input: HTMLInputElement): void {
-    input.click();
+  ngOnDestroy(): void {
+    this._revokePreview();
   }
 
-  gererFichiers(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const fichiers = Array.from(input.files ?? []);
-    this.ajouterFichiers(fichiers);
-    input.value = '';
-  }
-
-  deposerFichiers(event: DragEvent): void {
-    event.preventDefault();
-    this.ajouterFichiers(Array.from(event.dataTransfer?.files ?? []));
-  }
-
-  autoriserDepose(event: DragEvent): void {
-    event.preventDefault();
-  }
-
-  retirerPiece(piece: PieceJointeSelectionnee): void {
-    this.piecesJointes = this.piecesJointes.filter((p) => p !== piece);
-    // If we removed the file used for preview, revoke and clear preview
-    if (piece.type === 'application/pdf' && this.rawPreviewUrl) {
+  private _refreshPreview(): void {
+    this._revokePreview();
+    if (this.constat) {
       try {
-        URL.revokeObjectURL(this.rawPreviewUrl);
-      } catch (e) {}
-      this.rawPreviewUrl = null;
-      this.previewUrl = null;
-    }
-  }
-
-  private ajouterFichiers(fichiers: File[]): void {
-    this.erreur = null;
-
-    const nouveauxFichiers = fichiers
-      .filter((fichier) => this.formatsAutorisés.includes(fichier.type))
-      .map((fichier) => ({
-        nom: fichier.name,
-        type: fichier.type || 'fichier',
-        taille: this.formaterTaille(fichier.size),
-        fichier,
-      }));
-
-    this.piecesJointes = [...this.piecesJointes, ...nouveauxFichiers];
-
-    // If we have a PDF and no preview yet, create a preview URL
-    if (!this.previewUrl) {
-      const pdf = this.piecesJointes.find((p) => p.type === 'application/pdf');
-      if (pdf) {
-        try {
-          this.rawPreviewUrl = URL.createObjectURL(pdf.fichier);
-          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl);
-        } catch (e) {
-          this.previewUrl = null;
-          this.rawPreviewUrl = null;
-        }
+        this.rawPreviewUrl = URL.createObjectURL(this.constat);
+        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl);
+      } catch {
+        this.previewUrl = null;
       }
     }
   }
 
-  ngOnDestroy(): void {
+  private _revokePreview(): void {
     if (this.rawPreviewUrl) {
-      try {
-        URL.revokeObjectURL(this.rawPreviewUrl);
-      } catch (e) {}
+      try { URL.revokeObjectURL(this.rawPreviewUrl); } catch { /* noop */ }
       this.rawPreviewUrl = null;
       this.previewUrl = null;
     }
-  }
-
-  private formaterTaille(tailleEnOctets: number): string {
-    if (tailleEnOctets < 1024) {
-      return `${tailleEnOctets} o`;
-    }
-
-    const kiloOctets = tailleEnOctets / 1024;
-    if (kiloOctets < 1024) {
-      return `${kiloOctets.toFixed(1)} Ko`;
-    }
-
-    return `${(kiloOctets / 1024).toFixed(1)} Mo`;
   }
 }

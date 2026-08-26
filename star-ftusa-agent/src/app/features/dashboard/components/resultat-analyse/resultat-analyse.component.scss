@@ -90,3 +90,16 @@ h4:first-child { margin-top: 0; }
 @media (max-width: 900px) {
   .resultat-grid { grid-template-columns: 1fr; }
 }
+
+.dommages-reports {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.erreur-dommages {
+  font-size: 12px;
+  color: var(--star-red, #dc2626);
+  font-weight: 600;
+  margin-bottom: 8px;
+}

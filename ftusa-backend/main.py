@@ -24,6 +24,7 @@ import cv2
 
 import analyse_constat as ac
 import croquis_extraction as cx
+import analyse_dommages as ad
 
 app = FastAPI(title="API Agent FTUSA")
 
@@ -56,14 +57,16 @@ app.add_middleware(
 # (charger un modèle YOLO à chaque requête serait beaucoup trop lent)
 _model_checkbox = None
 _moteur = None
+_model_dommages = None
 
 
 @app.on_event("startup")
 def charger_ressources():
-    global _model_checkbox, _moteur
+    global _model_checkbox, _moteur, _model_dommages
     _model_checkbox = ac.charger_modele_checkbox()
     _moteur = ac.charger_moteur()
-    print("Modèle checkbox + barème FTUSA chargés.")
+    _model_dommages = ad.charger_modele_dommages()
+    print("Modèle checkbox + barème FTUSA + YOLO dommages chargés.")
 
 
 class CroquisVehicule(BaseModel):
@@ -241,3 +244,62 @@ def corriger_croquis(numero_sinistre: str, correction: CorrectionCroquis):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+# ── Détection de dommages ────────────────────────────────────────────────────
+
+class DommageDetecte(BaseModel):
+    type: str
+    confiance: float
+    pourcentage_surface_image: float
+    piece_touchee: str
+    nature: str
+
+
+class EvaluationSeverite(BaseModel):
+    score_indicatif: float
+    niveau: str
+
+
+class ResultatDommages(BaseModel):
+    vehicule: str
+    source: str
+    dommages: List[DommageDetecte]
+    evaluation_severite: EvaluationSeverite
+    description: str
+
+
+@app.post("/api/dommages/analyser", response_model=ResultatDommages)
+async def analyser_dommages(
+    photo: UploadFile = File(...),
+    vehicule: str = "A",
+):
+    """
+    Analyse une photo de véhicule et retourne les dommages détectés.
+    Paramètres :
+      - photo   : fichier image (jpg/png/webp)
+      - vehicule : "A" ou "B"
+    """
+    contenu = photo.content_type or ""
+    if not contenu.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Le fichier doit être une image (jpg, png, webp).")
+
+    image_bytes = await photo.read()
+
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Fichier image vide.")
+
+    loop = asyncio.get_event_loop()
+    try:
+        resultat = await loop.run_in_executor(
+            _executor,
+            ad.diagnostic_complet,
+            _model_dommages,
+            image_bytes,
+            vehicule,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'analyse des dommages : {e}")
+
+    return resultat

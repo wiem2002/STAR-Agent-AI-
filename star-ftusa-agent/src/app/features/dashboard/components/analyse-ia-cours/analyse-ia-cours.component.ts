@@ -25,6 +25,8 @@ export class AnalyseIaCoursComponent implements OnInit, OnDestroy {
   erreur: string | null = null;
 
   photos = [1, 2, 3, 4];
+  photoUrls: { src: string; label: string }[] = [];
+  private photoObjectUrls: string[] = [];
   private progressionSubscription?: Subscription;
   private appelEnCoursSubscription?: Subscription;
   private constatSubscription?: Subscription;
@@ -50,13 +52,10 @@ export class AnalyseIaCoursComponent implements OnInit, OnDestroy {
 
     this.constatSubscription = this.dossierCourantService.constat$.subscribe((f) => {
       if (this.rawPreviewUrl) {
-        try {
-          URL.revokeObjectURL(this.rawPreviewUrl);
-        } catch (e) {}
+        try { URL.revokeObjectURL(this.rawPreviewUrl); } catch (e) {}
         this.rawPreviewUrl = null;
         this.previewUrl = null;
       }
-
       if (f) {
         try {
           this.rawPreviewUrl = URL.createObjectURL(f);
@@ -67,6 +66,28 @@ export class AnalyseIaCoursComponent implements OnInit, OnDestroy {
         }
       }
     });
+
+    // Charger les vraies photos uploadées
+    this._chargerPhotos();
+  }
+
+  private _chargerPhotos(): void {
+    this.photoObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* noop */ } });
+    this.photoObjectUrls = [];
+
+    const toutes: { fichier: File; label: string }[] = [
+      ...this.dossierCourantService.photosAActuelles.map(f => ({ fichier: f, label: 'A' })),
+      ...this.dossierCourantService.photosBActuelles.map(f => ({ fichier: f, label: 'B' })),
+    ];
+
+    this.photoUrls = toutes.map(({ fichier, label }) => {
+      const src = URL.createObjectURL(fichier);
+      this.photoObjectUrls.push(src);
+      return { src, label };
+    });
+
+    this.photos = this.photoUrls.map((_, i) => i + 1);
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {
@@ -74,12 +95,12 @@ export class AnalyseIaCoursComponent implements OnInit, OnDestroy {
     this.appelEnCoursSubscription?.unsubscribe();
     this.constatSubscription?.unsubscribe();
     if (this.rawPreviewUrl) {
-      try {
-        URL.revokeObjectURL(this.rawPreviewUrl);
-      } catch (e) {}
+      try { URL.revokeObjectURL(this.rawPreviewUrl); } catch (e) {}
       this.rawPreviewUrl = null;
       this.previewUrl = null;
     }
+    this.photoObjectUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch { /* noop */ } });
+    this.photoObjectUrls = [];
   }
 
   annulerAnalyse(): void {

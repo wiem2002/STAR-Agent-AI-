@@ -8,3 +8,6 @@ pymupdf
 scikit-learn
 numpy
 easyocr
+transformers>=4.37.0
+accelerate
+qwen-vl-utils

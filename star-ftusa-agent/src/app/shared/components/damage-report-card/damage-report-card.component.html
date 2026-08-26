@@ -1,0 +1,25 @@
+<div class="drc" [class.drc--a]="vehicule === 'A'" [class.drc--b]="vehicule === 'B'">
+  <div class="drc__header">
+    <span class="drc__vehicule-badge">Véhicule {{ vehicule }}</span>
+    <span *ngIf="rapport && !chargement" class="drc__niveau badge" [ngClass]="niveauClass">
+      {{ rapport.evaluation_severite.niveau | titlecase }}
+    </span>
+  </div>
+
+  <!-- État chargement -->
+  <ng-container *ngIf="chargement">
+    <div class="drc__skeleton"></div>
+    <div class="drc__skeleton" style="width:75%"></div>
+  </ng-container>
+
+  <!-- Aucun rapport -->
+  <ng-container *ngIf="!chargement && !rapport">
+    <p class="drc__vide">Aucun rapport disponible</p>
+  </ng-container>
+
+  <!-- Rapport disponible : badge + description uniquement -->
+  <ng-container *ngIf="!chargement && rapport">
+    <p class="drc__description">{{ rapport.description }}</p>
+    <span *ngIf="estFallback" class="drc__fallback-mention">analyse qualitative</span>
+  </ng-container>
+</div>

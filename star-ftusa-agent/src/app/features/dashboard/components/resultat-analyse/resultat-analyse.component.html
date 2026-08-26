@@ -39,15 +39,18 @@
       </div>
 
       <h4>Dommages détectés</h4>
-      <div class="dommages">
-        <div class="dommage">
-          <span class="dommage__thumb">🚗</span>
-          <small>Véhicule A</small>
-        </div>
-        <div class="dommage">
-          <span class="dommage__thumb">🚙</span>
-          <small>Véhicule B</small>
-        </div>
+      <p *ngIf="erreurDommages" class="erreur-dommages">⚠️ {{ erreurDommages }}</p>
+      <div class="dommages-reports">
+        <app-damage-report-card
+          [rapport]="rapportA"
+          [chargement]="chargementDommages"
+          vehicule="A"
+        />
+        <app-damage-report-card
+          [rapport]="rapportB"
+          [chargement]="chargementDommages"
+          vehicule="B"
+        />
       </div>
       <div class="decision-actions">
         <button type="button" class="btn btn--primary" (click)="suivant()">Suivant</button>

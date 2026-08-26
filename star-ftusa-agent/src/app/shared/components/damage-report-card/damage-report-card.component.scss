@@ -1,0 +1,143 @@
+.drc {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drc__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.drc__vehicule-badge {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.drc--a .drc__vehicule-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.drc--b .drc__vehicule-badge {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+// Badges sévérité
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+.badge--leger    { background: #dcfce7; color: #166534; }
+.badge--modere   { background: #fef9c3; color: #854d0e; }
+.badge--important { background: #fee2e2; color: #991b1b; }
+.badge--inconnu  { background: var(--star-slate-100); color: var(--ink-500); }
+
+.drc__description {
+  font-size: 12.5px;
+  color: var(--ink-700);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.drc__fallback-mention {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  font-style: italic;
+}
+
+.drc__vide {
+  font-size: 12px;
+  color: var(--ink-400);
+  margin: 0;
+}
+
+// Liste des dommages structurés
+.drc__dommages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drc__dommage {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--star-green-50);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.drc__dommage-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.drc__piece {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.drc__type {
+  font-size: 11px;
+  color: var(--ink-500);
+}
+
+.drc__dommage-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drc__bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--star-green-100);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.drc__bar-fill {
+  height: 100%;
+  background: var(--star-green-500);
+  border-radius: 999px;
+  transition: width .4s ease;
+}
+
+.drc--b .drc__bar-fill { background: #dc2626; }
+
+.drc__conf, .drc__surface {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  white-space: nowrap;
+}
+
+// Skeleton loader
+.drc__skeleton {
+  height: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

@@ -1,0 +1,87 @@
+.fdz__input {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+}
+
+.fdz__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 1.5px dashed var(--star-green-300);
+  background: var(--star-green-50);
+  border-radius: var(--radius-md);
+  padding: 22px 12px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, transform .12s;
+
+  &:hover, &--survol {
+    background: #eefaf0;
+    border-color: var(--star-green-500);
+    transform: translateY(-1px);
+  }
+}
+
+.fdz__icone  { font-size: 22px; }
+.fdz__label  { font-size: 12.5px; font-weight: 700; color: var(--star-green-700); }
+.fdz__hint   { font-size: 11px; color: var(--ink-400); }
+
+.fdz__liste {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fdz__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.fdz__thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+
+  &--pdf {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: var(--star-green-50);
+    border-color: var(--star-green-200);
+  }
+}
+
+.fdz__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fdz__nom   { font-size: 12px; font-weight: 600; color: var(--ink-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fdz__taille { font-size: 11px; color: var(--ink-400); }
+
+.fdz__retirer {
+  background: none;
+  border: none;
+  color: var(--ink-400);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+
+  &:hover { color: var(--star-red, #dc2626); }
+}

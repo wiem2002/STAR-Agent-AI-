@@ -107,9 +107,17 @@
       </div>
     </div>
     <div class="preview-block">
-      <h4>Photos détectées ({{ photos.length }})</h4>
+      <h4>Photos détectées ({{ photoUrls.length }})</h4>
       <div class="photo-grid">
-        <div class="photo-thumb" *ngFor="let p of photos">🚗</div>
+        <ng-container *ngIf="photoUrls.length; else noPhotos">
+          <div class="photo-thumb" *ngFor="let p of photoUrls">
+            <img [src]="p.src" [alt]="'Véhicule ' + p.label" class="photo-thumb__img" />
+            <span class="photo-thumb__badge" [class.photo-thumb__badge--a]="p.label === 'A'" [class.photo-thumb__badge--b]="p.label === 'B'">{{ p.label }}</span>
+          </div>
+        </ng-container>
+        <ng-template #noPhotos>
+          <div class="photo-thumb photo-thumb--empty" *ngFor="let i of [1,2,3,4]">🚗</div>
+        </ng-template>
       </div>
       <a class="preview-link" href="javascript:void(0)">Voir toutes les photos</a>
     </div>
