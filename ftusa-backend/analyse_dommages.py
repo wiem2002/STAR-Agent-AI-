@@ -461,13 +461,128 @@ def _construire_description_yolo(
     return " ".join(phrases)
 
 
-# ── Analyse YOLO ─────────────────────────────────────────────────────────────
+# ── Fallback CV : détection de dommages sans YOLO ───────────────────────────
 
-def analyser_dommages_yolo(model, image_bytes: bytes) -> List[Dict[str, Any]]:
-    img = _image_depuis_bytes(image_bytes)
+def _analyser_deformation_cv(img: np.ndarray, vue: str) -> List[Dict[str, Any]]:
+    """
+    Détecte les zones de déformation visuelle directement sur l'image
+    quand YOLO ne détecte rien. Approche :
+    1. Convertit en niveaux de gris + égalisation pour normaliser luminosité
+    2. Détecte les contours forts (bords de déformation, cassures de ligne)
+    3. Mesure la densité de contours par zone de l'image
+    4. Zones à forte densité = zones potentiellement déformées
+    """
     h, w = img.shape[:2]
 
-    vue = _detecter_vue_vehicule(img)
+    gris = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Égalisation CLAHE pour gérer les photos sombres/grises
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    gris_eq = clahe.apply(gris)
+
+    # Détection de bords — Canny avec seuils adaptés
+    blur = cv2.GaussianBlur(gris_eq, (5, 5), 0)
+    edges = cv2.Canny(blur, 40, 120)
+
+    # Supprimer les bords dus au cadre de l'image (5% de marge)
+    marge = int(min(h, w) * 0.05)
+    edges[:marge, :] = 0
+    edges[-marge:, :] = 0
+    edges[:, :marge] = 0
+    edges[:, -marge:] = 0
+
+    # Divise l'image en grille 3×3 et mesure la densité de bords
+    grille_h, grille_w = h // 3, w // 3
+    zones_chaudes: List[Tuple[float, int, int]] = []  # (densité, row, col)
+
+    for row in range(3):
+        for col in range(3):
+            y1, y2 = row * grille_h, (row + 1) * grille_h
+            x1, x2 = col * grille_w, (col + 1) * grille_w
+            zone_edges = edges[y1:y2, x1:x2]
+            densite = np.count_nonzero(zone_edges) / max(zone_edges.size, 1)
+            zones_chaudes.append((densite, row, col))
+
+    zones_chaudes.sort(reverse=True)
+    if not zones_chaudes:
+        return []
+
+    densite_max = zones_chaudes[0][0]
+    # Seuil adaptatif : zones au moins à 40% de la densité maximale
+    seuil = max(densite_max * 0.40, 0.04)
+
+    detections_cv: List[Dict[str, Any]] = []
+    for densite, row, col in zones_chaudes[:3]:
+        if densite < seuil:
+            break
+
+        # Centre de la zone en coordonnées normalisées
+        cx = (col + 0.5) / 3
+        cy = (row + 0.5) / 3
+        box_xyxy = [
+            col * grille_w, row * grille_h,
+            (col + 1) * grille_w, (row + 1) * grille_h,
+        ]
+
+        pct_surface = round(densite * 100 * 0.8, 2)  # approximation surface
+        piece, confiance_piece = _deduire_piece_depuis_vue(
+            vue, box_xyxy, w, h, "dent", 0.30
+        )
+
+        # Niveau de sévérité basé sur la densité de bords
+        if densite > 0.18:
+            label_cv = "dent"
+            confiance = 0.45
+        elif densite > 0.10:
+            label_cv = "scratch"
+            confiance = 0.38
+        else:
+            label_cv = "dent"
+            confiance = 0.30
+
+        detections_cv.append({
+            "type":                      label_cv,
+            "confiance":                 confiance,
+            "confiance_piece":           confiance_piece * 0.85,  # légère pénalité (CV moins fiable)
+            "pourcentage_surface_image": pct_surface,
+            "nature":                    _LABEL_FR.get(label_cv, label_cv),
+            "piece_touchee":             piece,
+            "_source_cv":                True,  # marqueur interne, pas exposé au front
+        })
+
+    return detections_cv
+
+
+def _evaluer_severite_cv(detections_cv: List[Dict[str, Any]], vue: str) -> Dict[str, Any]:
+    """
+    Évalue la sévérité pour les détections CV.
+    Plus prudent que YOLO : on sait qu'il y a de la déformation mais pas
+    exactement son type → niveau modéré par défaut sauf si très forte densité.
+    """
+    if not detections_cv:
+        return {"score_indicatif": 0.0, "niveau": "aucun dommage"}
+
+    conf_max = max(d["confiance"] for d in detections_cv)
+    pct_max  = max(d["pourcentage_surface_image"] for d in detections_cv)
+
+    if conf_max >= 0.44 and pct_max > 10:
+        return {"score_indicatif": 6.5, "niveau": "dommage important"}
+    if conf_max >= 0.35 or pct_max > 5:
+        return {"score_indicatif": 4.0, "niveau": "dommage modéré"}
+    return {"score_indicatif": 2.0, "niveau": "dommage léger"}
+
+def analyser_dommages_yolo(
+    model,
+    image_bytes: bytes,
+    img: Optional[np.ndarray] = None,
+    vue: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Exécute YOLO segmentation. img et vue peuvent être passés si déjà calculés."""
+    if img is None:
+        img = _image_depuis_bytes(image_bytes)
+    h, w = img.shape[:2]
+
+    if vue is None:
+        vue = _detecter_vue_vehicule(img)
     print(f"[DOMMAGES] Vue détectée : {vue}")
 
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
@@ -627,24 +742,43 @@ def enrichir_avec_vlm(
 # ── Pipeline complet ──────────────────────────────────────────────────────────
 
 def diagnostic_complet(model, image_bytes: bytes, vehicule: str) -> Dict[str, Any]:
+    img = _image_depuis_bytes(image_bytes)
+    vue = _detecter_vue_vehicule(img)
+
+    # Niveau 1 : YOLO
+    detections: List[Dict[str, Any]] = []
+    source_detection = "modele_specialise"
+
     if model is not None:
         try:
-            detections_brutes = analyser_dommages_yolo(model, image_bytes)
+            detections_brutes = analyser_dommages_yolo(model, image_bytes, img=img, vue=vue)
             detections = verifier_coherence(detections_brutes)
+            print(f"[DOMMAGES] YOLO : {len(detections)} détection(s)")
         except Exception as e:
             print(f"[DOMMAGES] YOLO échoué : {e}")
             traceback.print_exc()
             detections = []
-    else:
-        detections = []
 
-    evaluation    = evaluer_severite(detections)
+    # Niveau 2 : fallback CV si YOLO ne détecte rien
+    if not detections:
+        print("[DOMMAGES] YOLO sans résultat → fallback CV")
+        detections_cv = _analyser_deformation_cv(img, vue)
+        if detections_cv:
+            detections = detections_cv
+            source_detection = "vlm_local_fallback"
+            evaluation = _evaluer_severite_cv(detections_cv, vue)
+            print(f"[DOMMAGES] CV fallback : {len(detections)} zone(s), niveau={evaluation['niveau']}")
+        else:
+            evaluation = {"score_indicatif": 0.0, "niveau": "aucun dommage"}
+    else:
+        evaluation = evaluer_severite(detections)
+
     enrichissement = enrichir_avec_vlm(image_bytes, detections, evaluation["niveau"])
 
     return {
         "vehicule":            vehicule,
-        "source":              enrichissement["source"],
-        "dommages":            detections,
+        "source":              enrichissement.get("source", source_detection),
+        "dommages":            [{k: v for k, v in d.items() if k != "_source_cv"} for d in detections],
         "evaluation_severite": evaluation,
         "description":         enrichissement["description"],
     }

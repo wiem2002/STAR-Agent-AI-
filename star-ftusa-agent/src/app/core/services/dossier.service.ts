@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, map } from 'rxjs';
 import { ResultatAnalyseIA } from '../models/analyse-ia.model';
 import {
   DossierHistorique,
@@ -8,41 +8,7 @@ import {
   TopCasFtusa,
 } from '../models/dossier.model';
 
-const KPI_MOCK: KpiTableauBord = {
-  dossiersTotaux: 1248,
-  dossiersTotauxVariation: '+12% ce mois',
-  enAttenteAnalyse: 82,
-  enAttenteVariation: '+5% ce mois',
-  iaEnCours: 15,
-  iaEnCoursVariation: '-3% ce mois',
-  aValiderFaibleConfiance: 23,
-  aValiderVariation: '+8% ce mois',
-  tempsMoyenTraitement: '06:45 min',
-  tempsMoyenVariation: '-15%',
-  tauxPrecisionIA: 92.6,
-  tauxPrecisionVariation: '+6%',
-  dossiersTraitesCeMois: 532,
-  dossiersTraitesVariation: '+18%',
-  dossiersClosCeMois: 410,
-  dossiersClosVariation: '+20%',
-};
-
-const REPARTITION_MOCK: RepartitionResultat[] = [
-  { label: 'Acceptés', valeurPct: 65, couleur: 'var(--star-green-500)' },
-  { label: 'Modifiés', valeurPct: 26, couleur: 'var(--star-amber)' },
-  { label: 'Refusés', valeurPct: 8, couleur: 'var(--star-red)' },
-  { label: 'En attente', valeurPct: 1, couleur: 'var(--star-slate)' },
-];
-
-const TOP_CAS_MOCK: TopCasFtusa[] = [
-  { cas: 'Cas 17', nombre: 245 },
-  { cas: 'Cas 38', nombre: 198 },
-  { cas: 'Cas 25', nombre: 163 },
-  { cas: 'Cas 14', nombre: 128 },
-  { cas: 'Cas 03', nombre: 97 },
-];
-
-const HISTORIQUE_MOCK: DossierHistorique[] = [
+const HISTORIQUE_INITIAL: DossierHistorique[] = [
   {
     numeroSinistre: '2025/06/000123',
     dateAccident: '02/06/2025',
@@ -97,8 +63,7 @@ const HISTORIQUE_MOCK: DossierHistorique[] = [
 
 @Injectable({ providedIn: 'root' })
 export class DossierService {
-  private readonly historiqueSubject = new BehaviorSubject<DossierHistorique[]>(HISTORIQUE_MOCK);
-  // Pending validation payload used to prefill the validation UI
+  private readonly historiqueSubject = new BehaviorSubject<DossierHistorique[]>(HISTORIQUE_INITIAL);
   private readonly pendingValidationSubject = new BehaviorSubject<ResultatAnalyseIA | null>(null);
 
   getPendingValidation(): Observable<ResultatAnalyseIA | null> {
@@ -109,26 +74,98 @@ export class DossierService {
     this.pendingValidationSubject.next(r);
   }
 
-  getKpiTableauBord(): Observable<KpiTableauBord> {
-    return of(KPI_MOCK);
-  }
-
-  getRepartitionResultats(): Observable<RepartitionResultat[]> {
-    return of(REPARTITION_MOCK);
-  }
-
-  getTopCasFtusa(): Observable<TopCasFtusa[]> {
-    return of(TOP_CAS_MOCK);
-  }
-
   getHistorique(): Observable<DossierHistorique[]> {
     return this.historiqueSubject.asObservable();
   }
 
-  /** Ajoute un dossier en tête de l'historique (frontend mock). */
   ajouterDossier(dossier: DossierHistorique): void {
     const current = this.historiqueSubject.value.slice();
     current.unshift(dossier);
     this.historiqueSubject.next(current);
+  }
+
+  // ── KPIs calculés dynamiquement depuis l'historique ─────────────────────
+
+  getKpiTableauBord(): Observable<KpiTableauBord> {
+    return this.historiqueSubject.pipe(
+      map(h => this._calculerKpi(h))
+    );
+  }
+
+  getRepartitionResultats(): Observable<RepartitionResultat[]> {
+    return this.historiqueSubject.pipe(
+      map(h => this._calculerRepartition(h))
+    );
+  }
+
+  getTopCasFtusa(): Observable<TopCasFtusa[]> {
+    return this.historiqueSubject.pipe(
+      map(h => this._calculerTopCas(h))
+    );
+  }
+
+  // ── Calculs ──────────────────────────────────────────────────────────────
+
+  private _calculerKpi(h: DossierHistorique[]): KpiTableauBord {
+    const total = h.length;
+    const enAttente = h.filter(d => d.statut === 'En attente').length;
+    const clos = h.filter(d => d.statut === 'Clôturé').length;
+    const aValider = h.filter(d => d.decision === 'À valider').length;
+
+    const confianceMoy = total > 0
+      ? Math.round(h.reduce((s, d) => s + d.confiance, 0) / total)
+      : 0;
+
+    // Calcul temps moyen fictif basé sur la confiance (placeholder réaliste)
+    const minutesMoy = total > 0 ? Math.max(1, Math.round(15 - confianceMoy / 10)) : 0;
+    const mm = String(minutesMoy).padStart(2, '0');
+
+    return {
+      dossiersTotaux: total,
+      dossiersTotauxVariation: `${total} dossier(s)`,
+      enAttenteAnalyse: enAttente,
+      enAttenteVariation: `${enAttente} en attente`,
+      iaEnCours: 0,
+      iaEnCoursVariation: 'Temps réel',
+      aValiderFaibleConfiance: aValider,
+      aValiderVariation: `${aValider} à valider`,
+      tempsMoyenTraitement: `${mm}:00 min`,
+      tempsMoyenVariation: 'Estimation',
+      tauxPrecisionIA: confianceMoy,
+      tauxPrecisionVariation: `${confianceMoy}%`,
+      dossiersTraitesCeMois: clos,
+      dossiersTraitesVariation: `${clos} clôturé(s)`,
+      dossiersClosCeMois: clos,
+      dossiersClosVariation: `${clos} ce mois`,
+    };
+  }
+
+  private _calculerRepartition(h: DossierHistorique[]): RepartitionResultat[] {
+    const total = h.length || 1;
+    const compter = (dec: string) =>
+      Math.round((h.filter(d => d.decision === dec).length / total) * 100);
+
+    const acceptes = compter('Accepté');
+    const modifies = compter('Modifié');
+    const refuses  = compter('Refusé');
+    const attente  = Math.max(0, 100 - acceptes - modifies - refuses);
+
+    return [
+      { label: 'Acceptés',   valeurPct: acceptes, couleur: 'var(--star-green-500)' },
+      { label: 'Modifiés',   valeurPct: modifies, couleur: 'var(--star-amber)' },
+      { label: 'Refusés',    valeurPct: refuses,  couleur: 'var(--star-red)' },
+      { label: 'En attente', valeurPct: attente,  couleur: 'var(--star-slate)' },
+    ];
+  }
+
+  private _calculerTopCas(h: DossierHistorique[]): TopCasFtusa[] {
+    const comptage: Record<number, number> = {};
+    for (const d of h) {
+      comptage[d.casIA] = (comptage[d.casIA] || 0) + 1;
+    }
+    return Object.entries(comptage)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cas, nombre]) => ({ cas: `Cas ${cas}`, nombre }));
   }
 }

@@ -103,6 +103,17 @@ def _clip_box(x1: int, y1: int, x2: int, y2: int, w: int, h: int) -> Tuple[int, 
 
 
 # ---------------------------------------------------------------------------
+# Normalisation du contraste
+# ---------------------------------------------------------------------------
+
+def _normaliser_contraste(image: np.ndarray) -> np.ndarray:
+    """Applique CLAHE pour normaliser la luminosité (robustesse aux scans sombres/surexposés)."""
+    gris = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return clahe.apply(gris)
+
+
+# ---------------------------------------------------------------------------
 # Extraction de la case 13
 # ---------------------------------------------------------------------------
 
@@ -123,47 +134,124 @@ def _normaliser_bytes_vers_image(data: bytes) -> np.ndarray:
 
 
 def _detecter_boite_croquis(image: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
+    """
+    Localise la case 13 par analyse des projections horizontales.
+
+    Stratégie calibrée sur la structure réelle du constat FTUSA :
+    - Les bordures horizontales fortes (lignes de séparation de cases) sont
+      détectées par projection : chaque ligne avec >30% de pixels sombres.
+    - La case 13 est délimitée par deux telles bordures successives dans la
+      bande [45%, 80%] de la hauteur, avec un espace > 10% de h entre elles.
+    - Horizontalement : la case 13 couvre ~70% de la largeur centrée.
+    """
     h, w = image.shape[:2]
-    zone = image[int(0.45 * h):, :]
-    oy = int(0.45 * h)
 
-    gris = cv2.cvtColor(zone, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gris, (5, 5), 0)
-    _, bin_ = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    bin_ = cv2.morphologyEx(bin_, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8), iterations=2)
+    gris = _normaliser_contraste(image)
+    _, bin_ = cv2.threshold(gris, 100, 255, cv2.THRESH_BINARY_INV)
 
-    contours, _ = cv2.findContours(bin_, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    meilleurs: List[Tuple[float, Tuple[int, int, int, int]]] = []
-    for c in contours:
-        x, y, cw, ch = cv2.boundingRect(c)
-        aire = cw * ch
-        if aire < 0.04 * w * h:
-            continue
-        ratio = cw / max(ch, 1)
-        if ratio < 1.1 or ratio > 3.2:
-            continue
-        cx = x + cw / 2
-        if cx < 0.22 * w or cx > 0.78 * w:
-            continue
-        score = aire * (1.0 - abs(ratio - 1.7) / 2.0)
-        meilleurs.append((score, (x, y + oy, x + cw, y + oy + ch)))
+    # Projection horizontale : nb pixels sombres par ligne
+    proj = np.sum(bin_, axis=1) / 255
 
-    if not meilleurs:
+    # Chercher les lignes fortes (bordures) dans la zone d'intérêt
+    y_min = int(0.43 * h)
+    y_max = int(0.80 * h)
+    seuil = w * 0.25  # au moins 25% de pixels sombres = bordure
+
+    bordures = [y for y in range(y_min, y_max) if proj[y] > seuil]
+    if not bordures:
         return None
-    meilleurs.sort(key=lambda t: t[0], reverse=True)
-    return meilleurs[0][1]
+
+    # Regrouper les bordures consécutives en bandes
+    groupes: List[List[int]] = []
+    groupe_courant = [bordures[0]]
+    for y in bordures[1:]:
+        if y - groupe_courant[-1] <= 4:
+            groupe_courant.append(y)
+        else:
+            groupes.append(groupe_courant)
+            groupe_courant = [y]
+    groupes.append(groupe_courant)
+
+    # Centre de chaque bande = position de la bordure
+    centres = [int(np.mean(g)) for g in groupes]
+
+    # Chercher la paire de bordures avec le plus grand écart
+    # (la case 13 est la plus haute zone du document FTUSA)
+    min_gap = int(0.15 * h)
+    meilleur = None
+    meilleur_score = 0
+
+    for i in range(len(centres)):
+        for j in range(i + 1, len(centres)):
+            gap = centres[j] - centres[i]
+            if gap < min_gap:
+                continue
+            if gap > int(0.26 * h):  # pas plus de 26% de hauteur (case 13 ~22%)
+                continue
+            # Préférer la zone dans [47%, 72%] du document (position connue case 13)
+            cy_norm = (centres[i] + centres[j]) / 2 / h
+            # Pénalité si le centre est trop bas (case suivante) ou trop haut
+            penalite = abs(cy_norm - 0.59) * 3
+            score = gap * max(0.1, 1.0 - penalite)
+            if score > meilleur_score:
+                meilleur_score = score
+                meilleur = (centres[i], centres[j])
+
+    if meilleur is None:
+        return None
+
+    y1_case, y2_case = meilleur
+
+    # Largeur : la case 13 occupe environ 70% de la largeur, centrée
+    # Détecter les bordures verticales dans cette bande
+    bande = bin_[y1_case:y2_case, :]
+    proj_v = np.sum(bande, axis=0) / 255
+    seuil_v = (y2_case - y1_case) * 0.25
+
+    cols_fortes = [x for x in range(w) if proj_v[x] > seuil_v]
+    if cols_fortes:
+        x1_case = max(0, min(cols_fortes) - 5)
+        x2_case = min(w, max(cols_fortes) + 5)
+    else:
+        x1_case = int(0.05 * w)
+        x2_case = int(0.95 * w)
+
+    print(f"[CROQUIS] Case 13 detectee: ({x1_case},{y1_case})-({x2_case},{y2_case}) "
+          f"= {x2_case-x1_case}x{y2_case-y1_case}px "
+          f"({x1_case/w*100:.0f}%,{y1_case/h*100:.0f}%)-({x2_case/w*100:.0f}%,{y2_case/h*100:.0f}%)")
+
+    return x1_case, y1_case, x2_case, y2_case
 
 
 def _recadrer_zone_croquis(image: np.ndarray) -> np.ndarray:
+    """
+    Recadre précisément la zone de dessin de la case 13.
+    Retire le titre 'Croquis de l'accident' (haut) et les bordures (bas/côtés).
+    """
     h, w = image.shape[:2]
     box = _detecter_boite_croquis(image)
+
     if box is None:
-        box = (int(0.28 * w), int(0.58 * h), int(0.72 * w), int(0.78 * h))
+        # Repli calibré : case 13 est entre 48% et 70% de la hauteur
+        box = (int(0.05 * w), int(0.48 * h), int(0.95 * w), int(0.70 * h))
+        print("[CROQUIS] Repli sur coordonnees fixes")
+
     x1, y1, x2, y2 = _clip_box(*box, w, h)
-    mx = int(0.02 * (x2 - x1))
-    my_top = int(0.12 * (y2 - y1))
-    my_bot = int(0.03 * (y2 - y1))
-    x1, y1, x2, y2 = _clip_box(x1 + mx, y1 + my_top, x2 - mx, y2 - my_bot, w, h)
+
+    # Rogner : enlever titre (haut ~8%), marges latérales légères, bas minimal
+    zone_h = y2 - y1
+    zone_w = x2 - x1
+    marge_top  = int(0.08 * zone_h)   # titre "13. Croquis de l'accident"
+    marge_bot  = int(0.02 * zone_h)
+    marge_lat  = int(0.01 * zone_w)
+
+    x1, y1, x2, y2 = _clip_box(
+        x1 + marge_lat,
+        y1 + marge_top,
+        x2 - marge_lat,
+        y2 - marge_bot,
+        w, h,
+    )
     return image[y1:y2, x1:x2].copy()
 
 
@@ -212,7 +300,9 @@ def _extraire_segments_route(image_bin: np.ndarray, w: int, h: int) -> List[Tupl
 
     segments: List[Tuple[float, float, float, float]] = []
     if lignes is not None:
-        for l in lignes[:, 0, :]:
+        # HoughLinesP peut retourner (N,1,4) ou (N,4) selon la version OpenCV
+        lines_arr = lignes[:, 0, :] if lignes.ndim == 3 else lignes
+        for l in lines_arr:
             x1, y1, x2, y2 = map(float, l)
             longueur = math.hypot(x2 - x1, y2 - y1)
             if longueur >= seuil_min_longueur:
@@ -243,10 +333,11 @@ def _analyser_topologie(
     w: int, h: int,
 ) -> Tuple[str, float]:
     """
-    Analyse la topologie des segments routiers pour déterminer le type
-    d'intersection.
-
+    Analyse la topologie des segments routiers.
     Retourne (type_intersection, confiance).
+
+    Seuils assouplis pour détecter les intersections T avec un court segment vertical
+    (dessin manuscrit où la rue secondaire est peu longue).
     """
     if not segments:
         return "ligne-droite", 0.35
@@ -265,54 +356,94 @@ def _analyser_topologie(
         else:
             obliques.append((longueur, angle))
 
-    # Longueur totale par direction
     long_h = sum(l for l, *_ in horizontaux)
     long_v = sum(l for l, *_ in verticaux)
     long_o = sum(l for l, _ in obliques)
-
     total = long_h + long_v + long_o + 1e-9
 
     ratio_h = long_h / total
     ratio_v = long_v / total
 
-    # Décision topologique
-    # ─ Ligne droite : dominance horizontale nette, peu ou pas de vertical
-    if ratio_h > 0.55 and ratio_v < 0.20:
-        return "ligne-droite", min(0.92, 0.60 + ratio_h * 0.5)
+    nb_v = len(verticaux)
+    max_long_v = max((l for l, *_ in verticaux), default=0)
 
-    # ─ Carrefour : horizontal ET vertical significatifs + segment vertical
-    #   couvre une grande partie de la hauteur de l'image
-    if ratio_h > 0.25 and ratio_v > 0.25:
-        # Vérifie que le segment vertical est long (traverse la route)
-        if verticaux:
-            max_long_v = max(l for l, *_ in verticaux)
-            if max_long_v > h * 0.35:
-                return "carrefour", 0.82
-        return "T", 0.72
+    print(f"[TOPOLOGIE] ratio_h={ratio_h:.2f} ratio_v={ratio_v:.2f} "
+          f"nb_v={nb_v} max_long_v={max_long_v:.0f} h={h}")
 
-    # ─ Intersection T : horizontal dominant + vertical partiel (< hauteur)
-    if ratio_h > 0.30 and ratio_v > 0.10:
-        if verticaux:
-            max_long_v = max(l for l, *_ in verticaux)
-            if max_long_v < h * 0.55:  # Le vertical ne couvre pas toute la hauteur
-                return "T", 0.75
-            return "carrefour", 0.70
-        return "T", 0.60
+    # ─ Carrefour : vertical long couvre bien la hauteur ET horizontal fort
+    if ratio_h > 0.25 and ratio_v > 0.20 and max_long_v > h * 0.40:
+        return "carrefour", 0.82
 
-    # ─ Présence forte d'obliques → dessin complexe → carrefour ou T
-    if long_o > long_h * 0.4 and ratio_h > 0.20:
+    # ─ Intersection T : horizontal dominant + TOUT segment vertical détecté
+    #   (même court — rue secondaire dessinée en petit)
+    if ratio_h > 0.30 and nb_v >= 1:
+        if max_long_v > h * 0.20:   # segment vertical d'au moins 20% de la hauteur
+            conf = min(0.80, 0.55 + ratio_h * 0.4 + (max_long_v / h) * 0.3)
+            return "T", conf
+
+    # ─ Forte présence d'obliques sur fond horizontal → probable T ou carrefour
+    if long_o > long_h * 0.35 and ratio_h > 0.20:
         return "T", 0.55
 
-    return "ligne-droite", 0.45
+    # ─ Ligne droite : horizontal dominant, aucun vertical significatif
+    if ratio_h > 0.50 and max_long_v < h * 0.15:
+        return "ligne-droite", min(0.90, 0.60 + ratio_h * 0.5)
+
+    return "ligne-droite", 0.42
+
+
+# ---------------------------------------------------------------------------
+# Déduction rapide du type d'intersection depuis les circonstances seules
+# (sans CV — utilisé dans le chemin critique pour ne pas ralentir la réponse)
+# ---------------------------------------------------------------------------
+
+def _type_depuis_circonstances(
+    circ_a: Sequence[int],
+    circ_b: Sequence[int],
+) -> Tuple[str, float]:
+    """Retourne (type_intersection, confiance) depuis les circonstances uniquement."""
+    toutes = set(circ_a) | set(circ_b)
+    if not toutes:
+        return "ligne-droite", 0.50
+
+    if toutes & _CIRC_CARREFOUR:
+        return "carrefour", 0.90
+    if (toutes & _CIRC_VIRAGE) and (toutes & _CIRC_SECONDAIRE):
+        return "T", 0.90
+    if toutes & _CIRC_VIRAGE:
+        return "T", 0.80
+    if toutes & _CIRC_SECONDAIRE:
+        return "T", 0.82
+    if toutes & _CIRC_LIGNE and not (toutes & _CIRC_INTERSECTION_FORTE):
+        return "ligne-droite", 0.88
+    return "ligne-droite", 0.55
 
 
 # ---------------------------------------------------------------------------
 # Circonstances FTUSA → affinage du type d'intersection
 # ---------------------------------------------------------------------------
 
+# Circonstances qui impliquent OBLIGATOIREMENT une intersection
+_CIRC_INTERSECTION_FORTE = {
+    4,   # sortait d'un parking / lieu privé / chemin de terre
+    5,   # s'engageait dans un parking / lieu privé / chemin de terre
+    12,  # virait à droite
+    13,  # virait à gauche
+    16,  # venait de droite (dans un carrefour)
+    17,  # n'avait pas observé le signal de priorité
+}
+
+# Circonstances qui impliquent un carrefour avec règle de priorité
 _CIRC_CARREFOUR = {16, 17}
-_CIRC_VIRAGE    = {12, 13}
-_CIRC_LIGNE     = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15}
+
+# Circonstances de virage simple (T ou carrefour)
+_CIRC_VIRAGE = {12, 13}
+
+# Circonstances de sortie/entrée d'une voie secondaire (T)
+_CIRC_SECONDAIRE = {4, 5}
+
+# Circonstances de ligne droite pure
+_CIRC_LIGNE = {1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15}
 
 
 def _affiner_avec_circonstances(
@@ -322,44 +453,45 @@ def _affiner_avec_circonstances(
     circ_b: Sequence[int],
 ) -> Tuple[str, float]:
     """
-    Combine le résultat CV avec les circonstances.
-
-    - Si les circonstances sont très claires, elles priment sur le CV.
-    - Sinon, le CV est la référence avec boost/malus de confiance.
+    Les circonstances priment sur le CV dès qu'elles sont explicites.
+    Hiérarchie de décision :
+      1. Carrefour avec priorité (circ 16/17) → carrefour
+      2. Virage + sortie secondaire            → T
+      3. Virage seul                           → T (ou carrefour si CV dit carrefour)
+      4. Sortie secondaire seule               → T
+      5. Ligne droite pure                     → ligne-droite
+      6. Aucune info exploitable               → résultat CV
     """
     toutes = set(circ_a) | set(circ_b)
     if not toutes:
         return type_cv, conf_cv
 
-    # Signal fort des circonstances
+    # ── Règle 1 : carrefour avec priorité ──
     if toutes & _CIRC_CARREFOUR:
         if type_cv in ("carrefour", "T"):
             return type_cv, min(0.95, conf_cv + 0.15)
-        return "carrefour", 0.85
+        return "carrefour", 0.88
 
-    a_virage = bool(toutes & _CIRC_VIRAGE)
-    a_ligne  = bool(toutes & _CIRC_LIGNE)
+    # ── Règle 2 : virage + sortie secondaire → T certain ──
+    if (toutes & _CIRC_VIRAGE) and (toutes & _CIRC_SECONDAIRE):
+        return "T", 0.90
 
-    if a_virage and not a_ligne:
-        # Seulement des virages → forcément une intersection
-        if type_cv == "ligne-droite":
-            return "T", 0.70
-        return type_cv, min(0.92, conf_cv + 0.10)
+    # ── Règle 3 : virage seul ──
+    if toutes & _CIRC_VIRAGE:
+        if type_cv == "carrefour":
+            return "carrefour", min(0.90, conf_cv + 0.10)
+        return "T", 0.80
 
-    if a_virage and a_ligne:
-        # Mixte → probable intersection
-        if type_cv == "ligne-droite":
-            return "T", 0.65
-        return type_cv, conf_cv
+    # ── Règle 4 : sortie rue secondaire seule → T ──
+    if toutes & _CIRC_SECONDAIRE:
+        return "T", 0.82
 
-    if a_ligne and not a_virage:
-        # Seulement ligne droite
-        if type_cv in ("carrefour", "T"):
-            # CV dit intersection mais circonstances disent ligne → garder CV
-            # (le dessin est la source primaire), mais baisser la confiance
-            return type_cv, max(0.45, conf_cv - 0.20)
-        return "ligne-droite", min(0.92, conf_cv + 0.10)
+    # ── Règle 5 : ligne droite pure ──
+    if toutes & _CIRC_LIGNE and not (toutes & _CIRC_INTERSECTION_FORTE):
+        # Les circonstances disent ligne droite → elles priment toujours sur le CV
+        return "ligne-droite", min(0.92, conf_cv + 0.10) if type_cv == "ligne-droite" else "ligne-droite", 0.85
 
+    # ── Règle 6 : circonstances mixtes, on fait confiance au CV ──
     return type_cv, conf_cv
 
 
@@ -454,6 +586,18 @@ def _positions_vehicules(
         ]
 
     if type_intersection == "T":
+        # B sort d'une rue secondaire (circ 4 ou 5 de B) → B vient d'en haut
+        if cb & {4, 5}:
+            return [
+                {"id": "A", "x": 0.28, "y": 0.62, "angle": 0.0},
+                {"id": "B", "x": 0.52, "y": 0.30, "angle": 90.0},
+            ]
+        # A sort d'une rue secondaire
+        if ca & {4, 5}:
+            return [
+                {"id": "A", "x": 0.52, "y": 0.30, "angle": 90.0},
+                {"id": "B", "x": 0.28, "y": 0.62, "angle": 0.0},
+            ]
         if 13 in cb:  # B vire à gauche
             return [
                 {"id": "A", "x": 0.28, "y": 0.65, "angle": 0.0},
@@ -473,17 +617,6 @@ def _positions_vehicules(
             return [
                 {"id": "A", "x": 0.52, "y": 0.30, "angle": 45.0},
                 {"id": "B", "x": 0.28, "y": 0.65, "angle": 0.0},
-            ]
-        # Sortie rue secondaire
-        if 4 in ca or 5 in ca:
-            return [
-                {"id": "A", "x": 0.50, "y": 0.30, "angle": 180.0},
-                {"id": "B", "x": 0.28, "y": 0.65, "angle": 0.0},
-            ]
-        if 4 in cb or 5 in cb:
-            return [
-                {"id": "A", "x": 0.28, "y": 0.65, "angle": 0.0},
-                {"id": "B", "x": 0.50, "y": 0.30, "angle": 180.0},
             ]
         return [
             {"id": "A", "x": 0.30, "y": 0.65, "angle": 0.0},
@@ -595,36 +728,65 @@ def extraire_croquis_depuis_image(
     circonstances_a: Optional[Sequence[int]] = None,
     circonstances_b: Optional[Sequence[int]] = None,
 ) -> dict:
-    """Point d'entrée principal appelé depuis main.py après l'analyse."""
+    """
+    Pipeline de décision hiérarchique :
+    
+    1. Circonstances FTUSA — source de vérité principale (déterministes)
+       Si les circonstances donnent un signal fort → on fait confiance à 100%
+    
+    2. CV topologie sur la zone centrale du dessin (pas les bordures)
+       Utilisé seulement si les circonstances sont ambiguës ou absentes
+       La zone analysée exclut 15% des bords pour éviter les bordures colorées
+    
+    3. Positions A/B : déduites du type d'intersection + circonstances
+    """
     ca = list(circonstances_a or [])
     cb = list(circonstances_b or [])
 
-    # 1. Recadrer la case 13
+    # 1. Recadrer la case 13 et encoder
     zone = _recadrer_zone_croquis(image)
     _, buf = cv2.imencode(".png", zone)
     image_base64 = base64.b64encode(buf).decode("utf-8")
+    zh, zw = zone.shape[:2]
 
-    h, w = zone.shape[:2]
+    # 2. Circonstances en priorité absolue
+    type_circ, conf_circ = _type_depuis_circonstances(ca, cb)
+    circ_forte = conf_circ >= 0.80  # signal suffisamment fort
 
-    # 2. Analyse CV : détecter les axes routiers dans le dessin
-    zone_bin = _supprimer_grille_pointillee(zone)
-    segments = _extraire_segments_route(zone_bin, w, h)
-    type_cv, conf_cv = _analyser_topologie(segments, w, h)
+    if circ_forte:
+        # Les circonstances sont claires → on n'a pas besoin du CV
+        type_final, confiance = type_circ, conf_circ
+        print(f"[CROQUIS] Circonstances fortes: {type_final}({confiance:.2f}) circ_A={ca} circ_B={cb}")
+    else:
+        # 3. CV sur la zone CENTRALE du dessin
+        # Exclure 20% à gauche (zone jaune), 25% à droite (zone verte),
+        # 10% haut et bas pour éviter les bordures colorées du constat
+        marge_gauche = int(0.20 * zw)
+        marge_droite = int(0.25 * zw)
+        marge_y = int(0.10 * zh)
+        zone_interieure = zone[marge_y:zh - marge_y, marge_gauche:zw - marge_droite]
+        zi_h, zi_w = zone_interieure.shape[:2]
 
-    # 3. Affiner avec les circonstances
-    type_final, confiance = _affiner_avec_circonstances(type_cv, conf_cv, ca, cb)
+        try:
+            zone_bin = _supprimer_grille_pointillee(zone_interieure)
+            segments = _extraire_segments_route(zone_bin, zi_w, zi_h)
+            type_cv, conf_cv = _analyser_topologie(segments, zi_w, zi_h)
+        except Exception as e:
+            print(f"[CROQUIS] CV echoue: {e}")
+            type_cv, conf_cv = "ligne-droite", 0.40
 
-    # 4. Positions des véhicules selon le scénario
+        # Combiner CV + circonstances
+        type_final, confiance = _affiner_avec_circonstances(type_cv, conf_cv, ca, cb)
+        print(
+            f"[CROQUIS] CV={type_cv}({conf_cv:.2f}) circ={type_circ}({conf_circ:.2f}) "
+            f"-> final={type_final}({confiance:.2f}) circ_A={ca} circ_B={cb}"
+        )
+
+    # 4. Positions des véhicules
     vehicules = _positions_vehicules(type_final, ca, cb)
 
     # 5. Panneau STOP
     panneau_stop, stop_position = _stop_depuis_circonstances(ca, cb, type_final)
-
-    print(
-        f"[CROQUIS] CV={type_cv}({conf_cv:.2f}) "
-        f"circ_A={ca} circ_B={cb} "
-        f"→ final={type_final}({confiance:.2f}) stop={panneau_stop}"
-    )
 
     return {
         "numeroSinistre": numero_sinistre,
@@ -644,6 +806,7 @@ def extraire_croquis_rapide(
     circonstances_a: Optional[Sequence[int]] = None,
     circonstances_b: Optional[Sequence[int]] = None,
 ) -> dict:
+    """Depuis des bytes PDF/image — appelle extraire_croquis_depuis_image."""
     image = _normaliser_bytes_vers_image(image_ou_pdf_bytes)
     return extraire_croquis_depuis_image(image, numero_sinistre, circonstances_a, circonstances_b)
 

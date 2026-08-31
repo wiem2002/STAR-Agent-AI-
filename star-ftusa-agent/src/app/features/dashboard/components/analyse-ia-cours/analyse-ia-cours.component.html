@@ -27,7 +27,6 @@
     <div class="preview-block">
       <h4>Croquis détecté</h4>
       <div class="preview-frame preview-frame--sketch">
-        <!-- Schéma redessiné toujours affiché -->
         <ng-container *ngIf="croquisDetecte; else sketchPlaceholder">
           <!-- Routes selon le type d'intersection -->
           <div class="sketch-road sketch-road--h"></div>
@@ -52,7 +51,6 @@
               <div class="sketch-centerline sketch-centerline--h"></div>
             </ng-container>
             <ng-container *ngSwitchDefault>
-              <!-- ligne-droite -->
               <div class="sketch-centerline sketch-centerline--h"></div>
             </ng-container>
           </ng-container>
@@ -72,19 +70,14 @@
             [ngStyle]="vehiculeStyle(vehicule)"
           >
             <svg class="sketch-vehicle__svg" viewBox="0 0 52 26" xmlns="http://www.w3.org/2000/svg">
-              <!-- carrosserie -->
               <rect x="2" y="6" width="48" height="14" rx="4"/>
-              <!-- toit -->
               <rect x="12" y="2" width="28" height="10" rx="3"/>
-              <!-- roues -->
               <rect x="5"  y="19" width="10" height="5" rx="2"/>
               <rect x="37" y="19" width="10" height="5" rx="2"/>
-              <!-- vitres -->
               <rect x="14" y="3" width="11" height="8" rx="2" fill="rgba(255,255,255,0.45)"/>
               <rect x="27" y="3" width="11" height="8" rx="2" fill="rgba(255,255,255,0.45)"/>
             </svg>
             <span class="sketch-vehicle__label">{{ vehicule.id }}</span>
-            <!-- flèche direction -->
             <div class="sketch-vehicle__arrow"></div>
           </div>
 
@@ -98,12 +91,6 @@
             <p>En attente du croquis…</p>
           </div>
         </ng-template>
-      </div>
-
-      <!-- Miniature du scan original si disponible -->
-      <div *ngIf="croquisImageSrc" class="sketch-source">
-        <span class="sketch-source__label">Source scannée :</span>
-        <img [src]="croquisImageSrc" alt="Case 13 scannée" class="sketch-source__img" />
       </div>
     </div>
     <div class="preview-block">

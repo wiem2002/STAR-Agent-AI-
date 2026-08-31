@@ -73,6 +73,33 @@
 .preview-frame--sketch {
   background: #f2f6f4;
   overflow: hidden;
+  padding: 0;
+}
+
+// Image scannée plein cadre — affichage direct de la case 13
+.sketch-scan-full {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+// Badge type intersection en overlay sur l'image
+.sketch-type-badge {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.90);
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #374151;
+  padding: 1px 8px;
+  white-space: nowrap;
+  z-index: 6;
 }
 
 // ── Routes ──────────────────────────────────────────────────────────
@@ -214,7 +241,8 @@ $road-w: 30px;
   margin-top: -4px;
 }
 
-// Flèche de direction (pointe vers la droite = angle 0)
+// Flèche de direction — la direction est gérée par le transform rotate() du parent
+// La flèche pointe toujours vers la droite (avant du véhicule dans son repère local)
 .sketch-vehicle__arrow {
   position: absolute;
   right: -10px;
@@ -228,11 +256,12 @@ $road-w: 30px;
   z-index: 5;
 }
 
+// B a la même flèche que A — la rotation du véhicule détermine le sens
 .sketch-vehicle--b .sketch-vehicle__arrow {
-  right: auto;
-  left: -10px;
-  border-left: 0;
-  border-right: 8px solid rgba(0,0,0,0.35);
+  right: -10px;
+  left: auto;
+  border-left: 8px solid rgba(0,0,0,0.35);
+  border-right: 0;
 }
 
 // ── Panneau STOP ────────────────────────────────────────────────────
